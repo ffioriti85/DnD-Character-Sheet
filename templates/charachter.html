@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Character Sheet: {{ character.name }}</title>
+</head>
+<body>
+    <h1>{{ character.name }}</h1>
+    <form action="/character/{{ character.name }}" method="POST">
+        <!-- Display and edit character attributes -->
+        <label for="race">Race:</label>
+        <input type="text" id="race" name="race" value="{{ character.race }}" required><br>
+        <label for="height">Height:</label>
+        <input type="text" id="height" name="height" value="{{ character.height }}" required><br>
+        <label for="weight">Weight:</label>
+        <input type="text" id="weight" name="weight" value="{{ character.weight }}" required><br>
+        <label for="movement_speed">Movement Speed:</label>
+        <input type="text" id="movement_speed" name="movement_speed" value="{{ character.movement_speed }}" required><br>
+        <!-- Add more inputs for other attributes -->
+        <button type="submit">Save Character</button>
+    </form>
+</body>
+</html>

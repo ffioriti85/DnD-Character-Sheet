@@ -1,0 +1,82 @@
+/* General container styling */
+body {
+    font-family: 'Bona Nova', serif;
+}
+
+.container {
+    width: 80%;
+    margin: auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+}
+
+/* Character stats styling */
+.character-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.stat-box {
+    text-align: center;
+    width: 15%;
+    padding: 10px;
+    background-color: #f0f0f0; /* Light grey background */
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stat-name {
+    font-size: 20px; /* Slightly larger font size */
+    font-weight: bold;
+    margin: 0;
+}
+
+.modifier {
+    font-size: 36px; /* Larger font size for modifier */
+    font-weight: bold;
+    margin: 5px 0;
+}
+
+.stat-value {
+    font-size: 20px; /* Slightly larger font size for value */
+    color: gray;
+    margin: 0;
+}
+
+/* Health stats and condition stats styling */
+.health-stats, .condition-stats {
+    margin-bottom: 20px;
+}
+
+form button {
+    margin: 5px;
+}
+
+/* Button styling */
+.button {
+    display: block;
+    text-align: center;
+    margin: 20px auto;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+.button:hover {
+    background-color: #0056b3;
+}
+.form-container {
+        display: block; /* Ensures forms stack vertically */
+        width: 100%;
+    }
+    form {
+        display: block;
+        width: 100%;
+        margin-bottom: 20px;
+    }

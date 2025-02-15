@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add a Proficiency</title>
+    <!-- You can add your own CSS here for styling -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+        }
+        form {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Add a Proficiency</h1>
+
+<form action="/character/{{ character.name }}/add_proficiency" method="POST">
+    <!-- Existing fields -->
+    <label for="proficiency_name">Proficiency Name:</label>
+    <input type="text" id="proficiency_name" name="proficiency_name" required>
+
+    <label for="proficiency_description">Description: </label>
+    <input type="text" id="proficiency_description" name="proficiency_description" required>
+    <button type="submit">Add Proficiency</button>
+</form>
+</body>
+</html>

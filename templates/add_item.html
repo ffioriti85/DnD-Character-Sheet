@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Item to Inventory</title>
+    <!-- You can add your own CSS here for styling -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+        }
+        form {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Add Item to Inventory</h1>
+
+<form action="/character/{{ character.name }}/inventory/add_item" method="POST">
+    <!-- Existing fields -->
+    <label for="item_name">Item Name:</label>
+    <input type="text" id="item_name" name="item_name" required>
+
+    <label for="units">Amount of Units:</label>
+    <input type="number" id="units" name="units" min="1" required>
+
+    <label for="weight_per_unit">Weight per Unit (lbs):</label>
+    <input type="number" id="weight_per_unit" name="weight_per_unit" step="0.01" required>
+
+    <label for="additional_info">Additional Information:</label>
+    <input type="text" id="additional_info" name="additional_info">
+
+    <!-- Checkbox for armor -->
+    <label for="is_armor">
+        <input type="checkbox" id="is_armor" name="is_armor" onchange="toggleArmorFields()">
+        Is it armor?
+    </label>
+    <label for="is_shield">
+        <input type="checkbox" id="is_shield" name="is_shield" onchange="toggleArmorFields()">
+        Is it a shield?
+    </label>
+     <label for="is_weapon">
+        <input type="checkbox" id="is_weapon" name="is_weapon" onchange="toggleWeaponFields()">
+        Is it a weapon?
+    </label>
+
+    <!-- Additional fields for armor -->
+    <div id="armor_fields" style="display: none;">
+        <label for="ac_value">AC Value:</label>
+        <input type="number" id="ac_value" name="ac_value" step="1">
+
+        <label for="dx_modifier">
+            <input type="checkbox" id="dx_modifier" name="dx_modifier">
+            Takes DX Modifier into Account
+        </label>
+
+        <label for="modifiers">Modifiers:</label>
+        <input type="text" id="modifiers" name="modifiers">
+
+        <label for="conditions">Conditions:</label>
+        <input type="text" id="conditions" name="conditions">
+    </div>
+
+     <!-- Additional fields for weapons -->
+    <div id="weapon_fields" style="display: none;">
+        <label for="damage_dice">Damage Dice:</label>
+        <input type="text" id="damage_dice" name="damage_dice" step="1">
+
+         <label for="stat_modifier">Stat that Applies:</label>
+        <select id="stat_modifier" name="stat_modifier">
+            <option value="None">None</option>
+            <option value="Strength">Strength</option>
+            <option value="Dexterity">Dexterity</option>
+        </select>
+
+        <label for="modifiers">Modifiers:</label>
+        <input type="text" id="weapon_modifiers" name="modifiers">
+
+        <label for="conditions">Conditions:</label>
+        <input type="text" id="weapon_conditions" name="conditions">
+
+         <!-- Checkbox for ranged weapon -->
+        <label for="is_ranged">
+            <input type="checkbox" id="is_ranged" name="is_ranged" onchange="toggleRangeFields()">
+            Is it ranged?
+        </label>
+
+        <!-- Additional fields for range -->
+        <div id="range_fields" style="display: none;">
+            <label for="normal_range">Normal Range:</label>
+            <input type="text" id="normal_range" name="normal_range">
+
+        <label for="long_range">Long Range:</label>
+        <input type="text" id="long_range" name="long_range">
+        </div>
+    </div>
+    <button type="submit">Add Item</button>
+</form>
+<script>
+function toggleArmorFields() {
+    var isArmor = document.getElementById('is_armor').checked;
+    document.getElementById('armor_fields').style.display = isArmor ? 'block' : 'none';
+}
+
+function toggleWeaponFields() {
+    var isWeapon = document.getElementById('is_weapon').checked;
+    document.getElementById('weapon_fields').style.display = isWeapon ? 'block' : 'none';
+    }
+
+function toggleRangeFields() {
+    var isRanged = document.getElementById('is_ranged').checked;
+    document.getElementById('range_fields').style.display = isRanged ? 'block' : 'none';
+}
+</script>
+</body>
+</html>

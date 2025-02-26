@@ -590,11 +590,10 @@ def update_character(name):
     if total_debuff < 1:
         injury_fatigue_movement_debuff_text ="None"
         character['injury_fatigue_debuffs']="None"
-        print("No Injury Fatigue, proceed to remove the debuffs")
         character= remove_debuff_incall(character, "ST_Injury_Fatigue")
         character= remove_debuff_incall(character, "DX_Injury_Fatigue")
         character= remove_debuff_incall(character, "movement_Injury_Fatigue")
-        print(character['debuffs'])
+
 
     if total_debuff == 1:
         injury_fatigue_ST_debuff= - 1
@@ -648,13 +647,8 @@ def update_character(name):
     add_new_debuff(character, "debuff_movement", injury_fatigue_movement_debuff, injury_fatigue_debuff_reason,
                    "movement_Injury_Fatigue", False)
     character = apply_debuffs(character)
-    print(f"Im printing AFTER returning from applying buff Active ST is{character['active_ST']}")
-    # character['active_ST'] = int(character['ST']) - injury_fatigue_ST_debuff + character['debuff_ST']
-    # character['active_DX'] = int(character['DX']) -injury_fatigue_DX_debuff + character['debuff_DX']
-    # character['active_IN'] = int(character['IN']) + character['debuff_IN']
-    # character['active_WP'] = int(character['WP']) + character['debuff_WP']
-    # character['active_CH'] = int(character['CH']) + character['debuff_CH']
-    # character['active_CN'] = int(character['CN']) + character['debuff_CN']
+
+
 
 # Calculate the rest of the stats
     character['encumbrance'] = calculate_encumbrance_level(name, character['active_ST'])
@@ -1114,7 +1108,7 @@ def add_custom_skill(name):
             "stat": custom_skill_stat,
             "proficiency_bonus": proficiency_bonus,
         }
-        print(f"Ive tried to add the skill {custom_skill_name} that uses {custom_skill_stat}")
+
 
         save_character(character)
         update_character(name)  # Ensure updates reflect
@@ -1163,7 +1157,7 @@ def reload_abilities_on_long_rest(name):
     character = load_character(name)
     if not character:
         return "Character not found", 404
-    print('Im reloading the Active Abilities')
+
     for ability in character.get("active_abilities", []):
 
         ability["uses_left"] = ability["uses_per_long_rest"]
@@ -1198,7 +1192,7 @@ def long_rest(name):
 @app.route('/decrease_dc/<name>/<ability_id>', methods=['POST'])
 def decrease_dc(name, ability_id):
     change = -1
-    print(ability_id)
+
     modify_ability_dc(name, ability_id, change)
     return redirect(url_for("view_character", name=name))
 
@@ -1206,7 +1200,7 @@ def decrease_dc(name, ability_id):
 def increase_dc(name, ability_id):
     change = 1
     modify_ability_dc(name, ability_id, change)
-    print (ability_id)
+
     return redirect(url_for("view_character", name=name))
 
 def modify_ability_dc(name, ability_id, change):

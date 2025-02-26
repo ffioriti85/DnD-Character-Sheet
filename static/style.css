@@ -17,18 +17,23 @@ h1 {
 .character-stats {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 }
 
 .stat-box {
     text-align: center;
     width: 15%;
-    padding: 10px;
+    padding: 2px;
     background-color: #f0f0f0; /* Light grey background */
-    border-radius: 8px;
+    border-radius: 2px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
+.ability-box{
+text-align: center;
+    padding: 2px;
+    background-color: #fafafa; /* Light grey background */
+    border-radius: 2px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);}
 .stat-name {
     font-size: 20px; /* Slightly larger font size */
     font-weight: bold;
@@ -38,7 +43,7 @@ h1 {
 .modifier {
     font-size: 36px; /* Larger font size for modifier */
     font-weight: bold;
-    margin: 5px 0;
+    margin: 0px 0;
 }
 
 .stat-value {
@@ -71,6 +76,10 @@ form button {
 .button:hover {
     background-color: #0056b3;
 }
+.button-group {
+    display: flex;
+    gap: 0px;
+}
 .form-container {
         display: block; /* Ensures forms stack vertically */
         width: 100%;
@@ -79,4 +88,5 @@ form button {
         display: block;
         width: 100%;
         margin-bottom: 20px;
-    }
+
+

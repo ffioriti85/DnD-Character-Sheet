@@ -159,74 +159,158 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>{{ character.name }}</h1>
 
-    <div class="stats-section">
-<!-- Character Race, Height/Weight, PP -->
-            <div class="stats-row">
-                <div class="stat-box">
-                    <p class="label">Race</p>
-                    <p class="modifier">{{ character.race }}</p>
-                </div>
-                  <div class="stat-box">
+        <h1>{{ character.name }}</h1>
+         <div class="buttons">
+        <form action="{{ url_for('short_rest', name=character.name) }}" method="post">
+                            <button type="submit" class="button">Short Rest</button>
+                        </form>
+        <form action="{{ url_for('long_rest', name=character.name) }}" method="post">
+                            <button type="submit" class="button">Long Rest</button>
+                        </form>
+             </div>
+
+
+    <br>
+ <div class="stats-row">
+     <div class="stat-box">
+        <p class="label">Race: </p>
+        <p class="modifier">{{ character.race }}</p>
         <p class="label">Height & Weight</p>
         <p class="modifier">{{ character.height }} ft / {{ character.weight }} lb</p>
-    </div>
-    <div class="stat-box">
         <p class="label">Passive Perception</p>
         <p class="modifier">{{ character.passive_perception }}</p>
+
+</div>
+     <div class="stat-box">
+         {% set encumbrance_levels = {
+    0: "Unencumbered",
+    1: "Lightly Encumbered",
+    2: "Moderately Encumbered",
+    3: "Heavily Encumbered",
+    4: "Extremely Encumbered",
+    5: "Can't move"
+} %}
+
+                    <p class="label">Movement Speed</p>
+                    <p class="modifier">{{ character.active_movement_speed }}</p>
+                    <p class="label">Total AC:</p>
+                    <p class="modifier">{{ character.total_ac }}</p>
+                    <p class="label">Encumbrance Level</p>
+                    <p class="modifier">{{ encumbrance_levels.get(character.encumbrance, "Unknown") }}</p>
+        </div>
+
+      <div class="stat-box">
+            <p>Active Buffs and Debuffs</p>
+                        <p>{{ character.encumbrance_penalty_explained }}</p>
+                        <p> {{character.injury_fatigue_debuffs | safe  }}</p>
+
+{% set debuff_labels = {
+    "debuff_st": "Strength",
+    "debuff_dx": "Dexterity",
+    "debuff_in": "Intelligence",
+    "debuff_ch": "Charisma",
+    "debuff_cn": "Constitution",
+    "debuff_wp": "Wisdom",
+    "debuff_movement": "Movement Speed",
+    "debuff_height": "Height",
+    "debuff_max_vp": "Max Vitality Points",
+    "debuff_max_wp": "Max Wound Points",
+
+
+} %}
+
+
+
+  {% for debuff in character.debuffs %}
+                  {% if debuff.value != 0 %} <span>{{ debuff.value }} {{ debuff_labels[debuff.name] }} by {{ debuff.reason }}</span>
+
+    <form action="{{ url_for('remove_debuff', name=character.name, debuff_id=debuff.id) }}" method="post" style="display: inline;">
+        {% if debuff.removable %}<button type="submit" style="display: inline-block;">Remove</button> <br>{% endif %}
+        {% if not debuff.removable %}<br> {% endif %}
+    </form>{% endif %}
+
+{% endfor %}
+
+
+
+          </div>
+
+     <div class="stat-box">
+        <p class="label">Purse</p>
+        <p class="modifier">Gold: {{ character.gold }}</p>
+        <p class="modifier">Silver: {{ character.silver }}</p>
+        <p class="modifier">Copper: {{ character.copper }}</p>
+
+        <form action="{{ url_for('update_purse', name=character.name) }}" method="post">
+            <label for="amount">Amount:</label>
+            <input type="number" id="amount" name="amount" placeholder="Enter amount" required>
+
+            <select id="currency" name="currency">
+                <option value="gold">Gold</option>
+                <option value="silver">Silver</option>
+                <option value="copper">Copper</option>
+            </select>
+
+             <button type="submit" class="button">Update Purse</button>
+        </form>
     </div>
-
-            </div>
-        </div>
-    <!-- Purse -->
+ </div>
+        <br>
+    <!-- Debuffs and Buffs      -->
           <div class="stats-row">
-            <div class="stat-box">
-                <p class="label">Purse</p>
-                <p class="modifier">Gold: {{ character.gold }}  || Silver: {{ character.silver }}  || Copper: {{ character.copper }}</p>
 
-        </div>
         </div>
         <br>
 <!-- Character Stats -->
         <div class="stats-row">
             <div class="stat-box">
                 <p>ST</p>
-                <p class="modifier">{{ get_modifier(character.active_ST) }}</p>
+                <p class="modifier">{{ character.ST_modifier }}</p>
                 <p class="value">{{ character.active_ST }}</p>
             </div>
             <div class="stat-box">
                 <p>DX</p>
-                <p class="modifier">{{ get_modifier(character.active_DX) }}</p>
+                <p class="modifier">{{ character.DX_modifier }}</p>
                 <p class="value">{{ character.active_DX }}</p>
             </div>
             <div class="stat-box">
                 <p>CN</p>
-                <p class="modifier">{{ get_modifier(character.CN) }}</p>
+                <p class="modifier">{{ character.CN_modifier }}</p>
                 <p class="value">{{ character.active_CN }}</p>
             </div>
             <div class="stat-box">
                 <p>CH</p>
-                <p class="modifier">{{ get_modifier(character.CH) }}</p>
+                <p class="modifier">{{ character.CH_modifier }}</p>
                 <p class="value">{{ character.active_CH }}</p>
             </div>
             <div class="stat-box">
                 <p>IN</p>
-                <p class="modifier">{{ get_modifier(character.IN) }}</p>
+                <p class="modifier">{{ character.IN_modifier }}</p>
                 <p class="value">{{ character.active_IN }}</p>
             </div>
             <div class="stat-box">
                 <p>WP</p>
-                <p class="modifier">{{ get_modifier(character.active_WP) }}</p>
+                <p class="modifier">{{ character.WP_modifier }}</p>
                 <p class="value">{{ character.active_WP }}</p>
             </div>
         </div>
+<br>
 
-        <br>
+
 <!-- Character Armor Section -->
         <div class="stats-row">
-            <div class="stat-box">
+
+
+            </div>
+
+        <br>
+
+
+        <br>
+        <div class="additional-stats">
+            <div class="stats-row">
+                <div class="stat-box">
          <div class="form-container">
                 <form action="/character/{{ character.name }}/equip_armor" method="POST">
     <label for="armor">Select Armor:</label>
@@ -246,32 +330,16 @@
         <input type="checkbox" id="shield_equipped" name="shield_equipped" {% if character.shield_equipped %}checked{% endif %} onclick="this.form.submit()">
     </div>
 </form>
-     </div>
- </div>
-<!-- Armor Details -->
-            <div class="stat-box">
-               <form action="/character/{{ character.name }}/update_temporary_armor_modifier" method="POST">
+             <form action="/character/{{ character.name }}/update_temporary_armor_modifier" method="POST">
 
         <label for="temporary_armor_modifier" class="label">Any Temporary Armor Effect?:</label>
         <input type="number" id="temporary_armor_modifier" name="temporary_armor_modifier" value="{{ character.temp_armor_modifier }}" step="1" onchange="this.form.submit()">
 
 
 </form>
-            </div>
 
-
-
-<div class="stat-box">
-    <p class="label">Total AC:</p>
-    <p class="modifier">{{ character.total_ac }}</p>
-</div>
-            </div>
-        <br>
-
-
-        <br>
-        <div class="additional-stats">
-            <div class="stats-row">
+     </div>
+ </div>
                 <div class="stat-box">
                     <p class="label">Vitality Points</p>
                     <p class="modifier">{{ character.active_vitality_points }} // {{ character.max_vitality_points }}</p>
@@ -301,16 +369,7 @@
                     </div>
                 </div>
 
-                <div class="stat-box white-box">
-                    <p class="label">Encumbrance Level</p>
-                    <p class="modifier">{{ character.encumbrance }}</p>
-                    <p class="label">Movement Speed</p>
-                    <p class="modifier">{{ character.active_movement_speed }}</p>
-                    <div class="white-box">
-                        <p>Movement Modifiers</p>
-                        <p>From Injury Fatigue: {{ character.active_movement_debuffs }}</p>
-                        <p>From Encumbrance: {{ character.encumbrance_penalty_explained }}</p>
-                    </div>
+
                 </div>
             </div>
         </div>
@@ -353,13 +412,7 @@
 
                 </div>
             <br>
-        <div class="stats-row">
-            <div class="stat-box">
-                    <p class="label">Conditions From IF</p>
-                    <p class="modifier">{{ character.injury_fatigue_debuffs | safe}}</p>
 
-                </div>
-    </div>
              <br>
         <div class="stats-row">
             <div class="stat-box">
@@ -383,7 +436,7 @@
     <input type="number" id="debuff_value" name="debuff_value" required>
     <label for="debuff_reason">Reason:</label>
     <input type="string" id="debuff_reason" name="debuff_reason">
-    <button type="submit">Apply Debuff</button>
+     <button type="submit" class="button">Apply Debuff</button>
 </form>
                 </div>
 {% set debuff_labels = {
@@ -398,202 +451,281 @@
     "debuff_max_vp": "Max Vitality Points",
     "debuff_max_wp": "Max Wound Points"
 } %}
-           <div class="stat-box">
-            <p class="label">Active Debuffs:</p>
-<table>
-    <thead>
-        <tr class="stat-name">
-            <th class="stat-name" >Stat Affected</th>
-            <th>Value</th>
-            <th>Reason</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for debuff in character.debuffs %}
-        <tr>
-            <td>{{ debuff_labels[debuff.name] }}</td>
-            <td>{{ debuff.value }}</td>
-            <td>{{ debuff.reason }}</td>
-            <td>
-                <form action="{{ url_for('remove_debuff', name=character.name, debuff_name=debuff.name) }}" method="post">
-                    <button type="submit">Remove</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-    </div></div>
+          </div>
 <br>
         <div class="additional-row">
             <div class="stats-row">
-                <div class="stat-box grey-box">
+                <div class="stat-box">
                     <p class="label">Traits</p>
-                    <ul>
-                        {% for trait in character.traits %}
-                            <li>{{ trait }}</li>
-                        {% endfor %}
-                    </ul>
-                    <div class="buttons">
-                        <form action="{{ url_for('add_trait', name=character.name) }}" method="post">
-                            <button type="submit" class="button">Add Trait</button>
-                        </form>
-                    </div>
-                </div>
-                <div class="stat-box grey-box">
-                    <p class="label">Proficiencies</p>
-
-                    <!-- Proficiencies list -->
-<!-- Proficiencies list -->
-<ul>
-    {% for proficiency in character.proficiencies %}
-        {% if proficiency != "none" %}
-        <li class="proficiency-item" data-bs-toggle="modal" data-bs-target="#proficiencyModal{{ loop.index }}">
-            {{ proficiency.proficiency_name }}
-            <span class="tooltiptext">{{ proficiency.proficiency_description }}</span>
-        </li>
-        <!-- Modal structure -->
-        <div class="modal fade" id="proficiencyModal{{ loop.index }}" tabindex="-1" aria-labelledby="proficiencyModalLabel{{ loop.index }}" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="proficiencyModalLabel{{ loop.index }}">{{ proficiency.proficiency_name }}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <!-- Display the description -->
-                        <p id="proficiencyDescription{{ loop.index }}">{{ proficiency.proficiency_description }}</p>
-
-                        <!-- Editable fields (hidden by default) -->
-                        <input type="text" id="editProficiencyName{{ loop.index }}" class="form-control" value="{{ proficiency.proficiency_name }}" style="display: none;">
-                        <textarea id="editProficiencyDescription{{ loop.index }}" class="form-control" style="display: none;">{{ proficiency.proficiency_description }}</textarea>
-                    </div>
-                    <div class="modal-footer">
-                        <!-- Edit Button -->
-                        <button type="button" class="btn btn-primary" id="editBtn{{ loop.index }}" onclick="enableEdit({{ loop.index }})">Edit</button>
-
-                        <!-- Save Button (hidden initially) -->
-                        <button type="button" class="btn btn-success" id="saveBtn{{ loop.index }}" style="display: none;" onclick="saveChanges({{ loop.index }}, '{{ name }}')">Save</button>
-
-                        <!-- Delete Button -->
-                        <button type="button" class="btn btn-danger" onclick="deleteProficiency({{ loop.index }}, '{{ name }}')">Delete</button>
-
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    </div>
-                </div>
-            </div>
+{% for trait in character.traits %}
+    <div class="ability-box">
+        <h3>{{ trait.name }}</h3>
+        <p><strong>Description:</strong> {{ trait.description }}</p>
+        <form action="{{ url_for('edit_trait', name=character.name, trait_id=trait.id) }}" method="post">
+            <button type="submit" class="button" >Edit</button>
+        </form>
         </div>
-        {% endif %}
-    {% endfor %}
-</ul>
+            {% endfor %}       <!-- Button to Show/Hide the Add Ability Form -->
+<button id="toggleTraitButton" class="button">Add Trait</button>
 
-<!-- Bootstrap JS for modal functionality -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Hidden Form -->
+<div id="addTraitForm" style="display: none;">
+    <h2>Add New Trait</h2>
+    <form action="{{ url_for('add_trait', name=character.name) }}" method="post">
+        <label for="trait_name">Trait Name:</label>
+        <input type="text" id="trait_name" name="trait_name" required>
 
-<!-- JavaScript to handle edit and delete functionality -->
+        <label for="trait_description">Description:</label>
+        <textarea id="trait_description" name="trait_description" required></textarea>
+
+         <button type="submit" class="button">Add Trait</button>
+    </form>
+</div>
 <script>
-function enableEdit(index) {
-    // Hide description text and show input fields
-    document.getElementById('proficiencyDescription' + index).style.display = 'none';
-    document.getElementById('editProficiencyName' + index).style.display = 'block';
-    document.getElementById('editProficiencyDescription' + index).style.display = 'block';
-
-    // Show Save button and hide Edit button
-    document.getElementById('editBtn' + index).style.display = 'none';
-    document.getElementById('saveBtn' + index).style.display = 'block';
-}
-
-function saveChanges(index, charName) {
-    var newName = document.getElementById('editProficiencyName' + index).value;
-    var newDescription = document.getElementById('editProficiencyDescription' + index).value;
-
-    fetch('/character/' + charName + '/update_proficiency', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            'proficiency_index': index,
-            'new_name': newName,
-            'new_description': newDescription
-        })
-    }).then(response => {
-        if (response.ok) {
-            document.getElementById('proficiencyDescription' + index).textContent = newDescription;
-            document.getElementById('proficiencyModalLabel' + index).textContent = newName;
-
-            document.getElementById('proficiencyDescription' + index).style.display = 'block';
-            document.getElementById('editProficiencyName' + index).style.display = 'none';
-            document.getElementById('editProficiencyDescription' + index).style.display = 'none';
-
-            document.getElementById('editBtn' + index).style.display = 'block';
-            document.getElementById('saveBtn' + index).style.display = 'none';
-        } else {
-            alert('Error updating proficiency');
-        }
-    });
-}
-
-function deleteProficiency(index, charName) {
-    if (confirm("Are you sure you want to delete this proficiency?")) {
-        fetch('/character/' + charName + '/delete_proficiency', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                'proficiency_index': index
-            })
-        }).then(response => {
-            if (response.ok) {
-                location.reload(); // Reload the page to reflect changes
-            } else {
-                alert('Error deleting proficiency');
-            }
-        });
+document.getElementById("toggleTraitButton").addEventListener("click", function() {
+    var formDiv = document.getElementById("addTraitForm");
+    if (formDiv.style.display === "none") {
+        formDiv.style.display = "block";
+    } else {
+        formDiv.style.display = "none";
     }
-}
+});
 </script>
-<a href="{{ url_for('add_proficiency', name=character.name) }}" class="button">Add Proficiency</a>
-<!--                    <div class="buttons">-->
-<!--                        <form action="{{ url_for('add_proficiency', name=character.name) }}" method="post">-->
-<!--                            <button type="submit" class="button">Add Proficiency</button>-->
-<!--                        </form>-->
-<!--                    </div>-->
+
                 </div>
+
                 <div class="stat-box grey-box">
                     <p class="label">Active Abilities</p>
-                    <ul>
-                        {% for ability in character.active_abilities %}
-                            <li>
-                                <span>{{ ability.name }}</span>
-                                <input type="checkbox" {% if ability.available %}checked{% endif %} disabled>
-                            </li>
-                        {% endfor %}
-                    </ul>
+
+
+{% for ability in character.active_abilities %}
+    <div class="ability-box">
+        <h3>{{ ability.name }}</h3>
+        <p><strong>Description:</strong> {{ ability.description }}</p>
+        <p><strong>DC:</strong> {{ ability.dc }}</p>
+        <p><strong>Uses Left:</strong> {{ ability.uses_left }} / {{ ability.uses_per_long_rest }}</p>
+
+        <!-- Use Charge Button -->
+<div class="buttons">
+        <form action="{{ url_for('use_ability', name=character.name, ability_id=ability.id) }}" method="post">
+            <button type="submit" class="button" {% if ability.uses_left == 0 %} disabled {% endif %}>Use Charge</button>
+        </form>
+
+   <!-- Decrease DC Button -->
+
+        <form action="{{ url_for('decrease_dc', name=character.name, ability_id=ability.id) }}" method="post">
+            <button type="submit" class="button">Decrease DC</button>
+        </form>
+
+        <!-- Increase DC Button -->
+        <form action="{{ url_for('increase_dc', name=character.name, ability_id=ability.id) }}" method="post">
+            <button type="submit" class="button">Increase DC</button>
+        </form>
+    </div></div>
+                    <br>
+{% endfor %}
+
+<!-- Button to Show/Hide the Add Ability Form -->
+<button id="toggleFormButton" class="button">Add Active Ability</button>
+
+<!-- Hidden Form -->
+<div id="addAbilityForm" style="display: none;">
+    <h2>Add Active Ability</h2>
+    <form action="{{ url_for('add_active_ability', name=character.name) }}" method="post">
+        <label for="ability_name">Ability Name:</label>
+        <input type="text" id="ability_name" name="ability_name" required>
+
+        <label for="ability_description">Description:</label>
+        <textarea id="ability_description" name="ability_description" required></textarea>
+
+        <label for="ability_dc">DC:</label>
+        <input type="number" id="ability_dc" name="ability_dc" required>
+
+        <label for="ability_uses">Uses per Long Rest:</label>
+        <input type="number" id="ability_uses" name="ability_uses" required>
+
+         <button type="submit" class="button">Add Ability</button>
+    </form>
+</div>
+<script>
+document.getElementById("toggleFormButton").addEventListener("click", function() {
+    var formDiv = document.getElementById("addAbilityForm");
+    if (formDiv.style.display === "none") {
+        formDiv.style.display = "block";
+    } else {
+        formDiv.style.display = "none";
+    }
+});
+</script>
+
+                </div>
+                 <div class="stat-box">
+                    <form method="post" action="{{ url_for('update_proficiency_bonus', name=character.name) }}">
+    <table>
+        <tr>
+            <th>Skill</th>
+            <th>Stat Modifier</th>
+            <th>Proficiency Bonus</th>
+            <th>Total Bonus</th>
+        </tr>
+        {% for skill, data in character.skills.items() %}
+        <tr>
+            <td>{{ skill }}</td>
+            <td>{{ "+" if character[data.stat + "_modifier"] >= 0 else "" }}{{ character[data.stat + "_modifier"] }}</td>
+            <td>
+                <input type="number" name="{{ skill }}" value="{{ data.proficiency_bonus }}" min="0">
+            </td>
+            <td>
+                {{ "+" if (character[data.stat + "_modifier"] + data.proficiency_bonus) >= 0 else "" }}
+                {{ character[data.stat + "_modifier"] + data.proficiency_bonus }}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+     <button type="submit" class="button">Update Proficiencies Values</button>
+</form>
+
+                        <form method="post" action="{{ url_for('add_custom_skill', name=character.name) }}">
+                        <label for="custom_skill_name">Custom Skill Name:</label>
+<input type="text" name="custom_skill_name" placeholder="Enter skill name">
+
+<label for="custom_skill_stat">Choose Modifier Stat:</label>
+<select name="custom_skill_stat">
+    <option value="ST">Strength (ST)</option>
+    <option value="DX">Dexterity (DX)</option>
+    <option value="CN">Constitution (CN)</option>
+    <option value="CH">Charisma (CH)</option>
+    <option value="IN">Intelligence (IN)</option>
+    <option value="WP">Willpower (WP)</option>
+</select>
+                              <button type="submit" class="button">Add Custom Skill</button>
+</form>
                 </div>
             </div>
+
         </div>
 <!-- NEW COLUMN for Inventory, Encumbrance, EMPTY -->
             <div class="stats-row">
-                <div class="stat-box">
-                    <p class="label">Inventory</p>
-                    <a href="{{ url_for('show_inventory', name=character.name) }}" class="button">Go to Inventory</a>
-                    <p>class="modifier">{{ character.encumbrance }}</p>
-<!--                    <div class="buttons">-->
-<!--                        <form action="{{ url_for('update_character', name=character.name) }}" method="post">-->
-<!--                            <button type="submit" name="decrease_injury_fatigue" class="button">Decrease</button>-->
-<!--                            <button type="submit" name="heal_injury_fatigue" class="button">Heal to Full</button>-->
-<!--                        </form>-->
-<!--                    </div>-->
-                </div>
+                    <div class="container">
+        <h1>{{ character.name }}'s Inventory</h1>
 
-                    <div class="stat-box">
-                    <p class="label">EMPTY</p>
-                    <p class="modifier"></p>
+        <div class="inventory-table">
+            <h2>Inventory</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Units</th>
+                        <th>Item Name</th>
+                        <th>Weight per Unit</th>
+                        <th>Total Weight</th>
+                        <th>Additional Information</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in character.inventory %}
+                        <tr>
+                            <td>{{ item.units }}</td>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.weight_per_unit }}</td>
+                            <td>{{ item.total_weight }}</td>
+                            <td>{{ item.additional_info }}</td>
+                            <td>
+                                <form action="{{ url_for('drop_item', name=character.name) }}" method="POST" style="display:inline;">
+                                    <input type="hidden" name="item_name" value="{{ item.item_name }}">
+                                    <button type="submit" name="action" value="drop">Drop Item</button>
+                                </form>
+                                <form action="{{ url_for('store_item', name=character.name) }}" method="POST" style="display:inline;">
+                                    <input type="hidden" name="item_name" value="{{ item.item_name }}">
+                                    <button type="submit" name="action" value="store">Store Item</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4"><strong>TOTAL INVENTORY WEIGHT</strong></td>
+                        <td><strong>{{ total_inventory_weight }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
 
-                </div>
+        <div class="on-the-ground-list">
+            <h2>On the Ground</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Units</th>
+                        <th>Item Name</th>
+                        <th>Weight per Unit</th>
+                        <th>Total Weight</th>
+                        <th>Additional Information</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in character.on_the_ground %}
+                        <tr>
+                            <td>{{ item.units }}</td>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.weight_per_unit }}</td>
+                            <td>{{ item.total_weight }}</td>
+                            <td>{{ item.additional_info }}</td>
+                            <td>
+                                <form action="{{ url_for('pickup_item', name=character.name) }}" method="POST" style="display:inline;">
+                                    <input type="hidden" name="item_name" value="{{ item.item_name }}">
+                                    <button type="submit" name="action" value="pick_up">Pick Up</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <form action="{{ url_for('reset_on_the_ground', name=character.name) }}" method="POST">
+                <button type="submit" name="action" value="reset">Reset On the Ground</button>
+            </form>
+        </div>
+
+        <div class="house-inventory-list">
+            <h2>House Inventory</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Units</th>
+                        <th>Item Name</th>
+                        <th>Weight per Unit</th>
+                        <th>Total Weight</th>
+                        <th>Additional Information</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in character.house_inventory %}
+                        <tr>
+                            <td>{{ item.units }}</td>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.weight_per_unit }}</td>
+                            <td>{{ item.total_weight }}</td>
+                            <td>{{ item.additional_info }}</td>
+                            <td>
+                                <form action="{{ url_for('pickup_item', name=character.name) }}" method="POST" style="display:inline;">
+                                    <input type="hidden" name="item_name" value="{{ item.item_name }}">
+                                    <button type="submit" name="action" value="pick_up">Pick Up</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <a href="{{ url_for('add_item', name=character.name) }}" class="button">Add Item</a>
+        <a href="{{ url_for('view_character', name=character.name) }}" class="button">Back to Character</a>
+    </div>
+
+
                 </div>
 
 

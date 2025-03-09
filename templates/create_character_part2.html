@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Abilities, Traits and Skills</title>
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bona+Nova:wght@400;700&display=swap">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+</head>
+<body>
+<div class="stats-row">
+    <div class="stat-box">
+    <h2>Add Proficiencies, Traits and Active Abilities</h2>
+
+          <p class="modifier">Active Abilities</p>
+
+        {% for ability in character.active_abilities %}
+        <div class="ability-box">
+            <h3>{{ ability.name }}</h3>
+            <p class="value">Description:</p> <p class="modifier">{{ ability.description }}</p>
+            <p class="value">DC:</p> <p class="modifier"> {{ ability.dc }}</p>
+            <p class="value">Uses Left:</p> <p class="modifier"> {{ ability.uses_left }} / {{ ability.uses_per_long_rest }}</p>
+
+</div>
+                  {% endfor %}
+        <button id="toggleFormButton" class="button">Add Active Ability</button>
+        <!-- Hidden Form -->
+        <div id="addAbilityForm" style="display: none;">
+    <h2>Add Active Ability</h2>
+
+    <form action="{{ url_for('add_active_ability_from_creation', name=character.name) }}" method="post">
+        <div>
+            <label for="ability_name">Ability Name:</label>
+            <input type="text" id="ability_name" name="ability_name" required>
+        </div>
+        <div>
+            <label for="ability_description">Description:</label>
+            <textarea id="ability_description" name="ability_description" required></textarea>
+        </div>
+        <div>
+            <label for="ability_dc">DC:</label>
+            <input type="number" id="ability_dc" name="ability_dc" required>
+        </div>
+        <div>
+            <label for="ability_uses">Uses per Long Rest:</label>
+            <input type="number" id="ability_uses" name="ability_uses" required>
+        </div>
+        <button type="submit" class="button">Add Ability</button>
+    </form>
+
+
+
+
+
+        <script>
+            document.getElementById("toggleFormButton").addEventListener("click", function() {
+                var formDiv = document.getElementById("addAbilityForm");
+                if (formDiv.style.display === "none") {
+                    formDiv.style.display = "block";
+                } else {
+                    formDiv.style.display = "none";
+                }
+            });
+        </script>
+</div></div>
+    <div class="stat-box">
+    <h3>New Trait??</h3>
+         <button id="toggleTraitButton" class="button">Add Trait</button>
+
+            <div id="addTraitForm" style="display: none;">
+                <h2>Add New Trait</h2>
+                <form action="{{ url_for('add_trait_from_creation', name=character.name) }}" method="post">
+                    <label for="trait_name">Trait Name:</label>
+                    <input type="text" id="trait_name" name="trait_name" required>
+                    <br>
+                    <br>
+                    <label for="trait_description">Description:</label>
+                    <textarea id="trait_description" name="trait_description" required></textarea>
+                    <br>
+                    <button type="submit" class="button">Add Trait</button>
+                </form>
+            </div>
+
+            <script>
+                document.getElementById("toggleTraitButton").addEventListener("click", function() {
+                    var formDiv = document.getElementById("addTraitForm");
+                    if (formDiv.style.display === "none") {
+                        formDiv.style.display = "block";
+                    } else {
+                        formDiv.style.display = "none";
+                    }
+                });
+
+                document.querySelectorAll(".edit-trait-button").forEach(button => {
+                    button.addEventListener("click", function() {
+                        const abilityBox = this.closest(".ability-box");
+                        abilityBox.querySelector(".trait-display").style.display = "none";
+                        abilityBox.querySelector(".trait-edit").style.display = "block";
+                    });
+                });
+
+                document.querySelectorAll(".cancel-edit-button").forEach(button => {
+                    button.addEventListener("click", function() {
+                        const abilityBox = this.closest(".ability-box");
+                        abilityBox.querySelector(".trait-display").style.display = "block";
+                        abilityBox.querySelector(".trait-edit").style.display = "none";
+                    });
+                });
+            </script>
+
+            <p class="label">Traits</p>
+            {% for trait in character.traits %}
+            <div class="ability-box" data-trait-id="{{ trait.id }}">
+                <div class="trait-display">
+                    <h3 class="trait-name">{{ trait.name }}</h3>
+                    <p class="trait-description"><strong>Description:</strong> {{ trait.description }}</p>
+                      {% endfor %}
+</div></div></div>
+    <div class="stat-box">
+        <!-- Buttons to Add Features -->
+        <h3>New Proficiencies</h3>
+        <div class="stat-box">
+            <form method="post" action="{{ url_for('update_proficiency_bonus_from_creation', name=character.name) }}">
+                <table class="inventory-table">
+                    <tr>
+                        <th>Skill</th>
+                        <th>Stat Modifier</th>
+                        <th>Proficiency Bonus</th>
+                        <th>Total Bonus</th>
+                        <th>Action</th>
+                    </tr>
+                    {% for skill, data in character.skills.items() %}
+                    <tr>
+                        <td>{{ skill }}</td>
+                        <td>{{ "+" if character[data.stat + "_modifier"] >= 0 else "" }}{{ character[data.stat +
+                            "_modifier"] }}
+                        </td>
+                        <td>
+                            <input type="number" name="{{ skill }}" value="{{ data.proficiency_bonus }}" min="0">
+                        </td>
+                        <td>
+                             {{ "+" if data.get("total_value", 0) >= 0 else "" }}{{ data.get("total_value", 0) }}
+                        </td>
+                         <td>
+                    <!-- Form to remove a skill -->
+                    <form method="post" action="{{ url_for('remove_skill', name=character.name) }}">
+                        <input type="hidden" name="skill_to_remove" value="{{ skill }}">
+                        <button type="submit" class="button" style="background-color: red; color: white;">Remove</button>
+                    </form>
+                </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                <button type="submit" class="button">Update Proficiencies Values</button>
+            </form>
+
+            <form method="post" action="{{ url_for('add_custom_skill_from_creation', name=character.name) }}">
+                <label for="custom_skill_name">Custom Skill Name:</label>
+                <input type="text" name="custom_skill_name" placeholder="Enter skill name">
+
+                <label for="custom_skill_stat">Choose Modifier Stat:</label>
+                <select name="custom_skill_stat">
+                    <option value="ST">Strength (ST)</option>
+                    <option value="DX">Dexterity (DX)</option>
+                    <option value="CN">Constitution (CN)</option>
+                    <option value="CH">Charisma (CH)</option>
+                    <option value="IN">Intelligence (IN)</option>
+                    <option value="WP">Willpower (WP)</option>
+                </select>
+                <button type="submit" class="button">Add Custom Skill</button>
+            </form>
+        </div>
+    </div>
+        <!-- Button to Show/Hide the Add Ability Form -->
+</div>
+
+
+
+        <br><br>
+       <form action="{{ url_for('finish_creation', name=character.name) }}" method="post">
+
+
+    <!-- Confirm Button -->
+    <button type="submit" class="button">Finish Character Creation</button>
+</form>
+
+
+
+</body>
+</html>

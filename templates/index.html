@@ -1,14 +1,129 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Character Manager</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character List</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap">
+
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: 'Bona Nova', serif;
+            background-color: #f8f9fa;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+            margin-bottom: 20px;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .character-item {
+            padding: 0;
+            border-bottom: 1px solid #eee;
+        }
+        .character-item:last-child {
+            border-bottom: none;
+        }
+        .character-button {
+            width: 100%;
+            text-align: left;
+            padding: 12px 20px;
+            background: none;
+            transition: background-color 0.2s;
+            border: none;
+            border-radius: 0;
+        }
+        .character-button:hover {
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+        .page-title {
+            color: #343a40;
+            border-bottom: 2px solid #6c757d;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        .custom-btn {
+            border-radius: 20px;
+            padding: 8px 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to the Character Manager</h1>
-    <form action="/" method="POST">
-        <label for="name">Enter Character Name:</label>
-        <input type="text" id="name" name="name" required>
-        <button type="submit">Submit</button>
-    </form>
+    <div class="container">
+        <!-- Page Header -->
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <h1 class="page-title">Welcome to the Character Manager</h1>
+            </div>
+        </div>
+
+
+
+        <!-- Character List Section -->
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0">Available Characters</h4>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if characters %}
+                            <ul class="list-group list-group-flush">
+                                {% for char in characters %}
+                                    <li class="list-group-item character-item">
+                                        <form action="/" method="POST">
+                                            <input type="hidden" name="name" value="{{ char }}">
+                                            <button type="submit" class="character-button fs-5">
+                                                {{ char }}
+                                            </button>
+                                        </form>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="text-center p-4">
+                                <p class="text-muted">No characters available. Create one above.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+       <!-- Character Form Section -->
+        <div class="row mb-4">
+            <div class="col-md-6 mx-auto">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">New Character</h4>
+                    </div>
+                    <div class="card-body">
+                        <form action="/" method="POST" class="d-flex">
+                            <div class="input-group">
+                                <label for="name" class="input-group-text">Character Name:</label>
+                                <input type="text" id="name" name="name" class="form-control" required>
+                                <button class="btn btn-primary custom-btn" type="submit">Submit</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

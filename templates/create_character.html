@@ -1,10 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Character</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap">
+
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+<div class="stats-row">
     <h1>Create Character: {{ name }}</h1>
+
+</div>
+<br>
+<div class="stats-row">
     <form action="/create/{{ name }}" method="POST">
         <!-- Basic Character Info -->
         <label for="race">Race:</label>
@@ -15,7 +34,11 @@
         <input type="text" id="weight" name="weight" required><br>
         <label for="movement_speed">Movement Speed:</label>
         <input type="text" id="movement_speed" name="movement_speed" required><br>
-
+        <label for="hit_dice">Hit Dice:</label>
+        <input type="text" id="hit_dice" name="hit_dice" required><br>
+</div>
+<br>
+        <div class="stats-row">
         <!-- Attributes -->
         <label for="ST">Strength (ST):</label>
         <input type="number" id="ST" name="ST" required><br>
@@ -29,43 +52,21 @@
         <input type="number" id="IN" name="IN" required><br>
         <label for="WP">Willpower (WP):</label>
         <input type="number" id="WP" name="WP" required><br>
-
-        <!-- Purse -->
-        <label for="gold">Gold:</label>
-        <input type="number" id="gold" name="gold" required><br>
-        <label for="silver">Silver:</label>
-        <input type="number" id="silver" name="silver" required><br>
-        <label for="copper">Copper:</label>
-        <input type="number" id="copper" name="copper" required><br>
+</div>
+<br>
 
         <!-- Health -->
-        <label for="vitality_points">Vitality Points Dice Rolls (comma separated):</label>
+        <label for="vitality_points">Vitality Points Dice Roll Value (Full Roll Value):</label>
         <input type="number" id="vitality_points" name="vitality_points" required><br>
         <label for="wound_points">Wound Points:</label>
         <input type="number" id="wound_points" name="wound_points" required><br>
 
+<div class="stats-row">
+        <button type="submit" class="button">Create Character</button>
+    </div>
 
 
-        <!-- Lists -->
-<!--        <label for="traits">Traits (comma separated):</label>-->
-<!--        <input type="text" id="traits" name="traits" required><br>-->
-<!--        <label for="proficiencies">Proficiencies (comma separated):</label>-->
-<!--        <input type="text" id="proficiencies" name="proficiencies" required><br>-->
-
-
-        <!-- Conditions -->
-<!--        <label for="injury_fatigue">Injury Fatigue:</label>-->
-<!--        <input type="number" id="injury_fatigue" name="injury_fatigue" required><br>-->
-<!--        <label for="exhaustion">Exhaustion:</label>-->
-<!--        <input type="number" id="exhaustion" name="exhaustion" required><br>-->
-<!--        <label for="encumbrance">Encumbrance:</label>-->
-<!--        <input type="number" id="encumbrance" name="encumbrance" required><br>-->
-
-        <!-- Abilities -->
-<!--        <label for="active_abilities">Active Abilities (comma separated):</label>-->
-<!--        <input type="text" id="active_abilities" name="active_abilities" required><br>-->
-
-        <button type="submit">Create Character</button>
     </form>
 </body>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </html>

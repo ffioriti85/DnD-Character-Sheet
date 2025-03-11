@@ -25,6 +25,8 @@
             --accent-color: #FFD700;
             --light-bg: #f8f9fa;
             --dark-bg: #343a40;
+            --sidebar-width: 250px;
+            --sidebar-bg: #343a40;
         }
 
         /* Add dynamic health bar styles */
@@ -51,14 +53,20 @@
 
         /* Sidebar Styles */
         .sidebar {
-            background-color: var(--primary-color);
-            min-height: 100vh;
-            color: white;
-            transition: all 0.3s;
-            position: sticky;
+            position: fixed;
             top: 0;
+            left: 0;
             height: 100vh;
+            width: var(--sidebar-width);
+            background-color: var(--sidebar-bg);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1000;
             overflow-y: auto;
+            color: white;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(calc(-1 * var(--sidebar-width)));
         }
 
         .sidebar .nav-link {
@@ -82,9 +90,18 @@
 
         /* Main Content Styles */
         .main-content {
+            position: relative;
+            margin-left: var(--sidebar-width);
             padding: 20px;
-            transition: all 0.3s;
-            overflow-x: hidden;
+            min-height: 100vh;
+            width: calc(100% - var(--sidebar-width));
+            transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out;
+            background-color: #f9f9f9;
+        }
+
+        .main-content.expanded {
+            margin-left: 0;
+            width: 100%;
         }
 
         /* Card Styles */
@@ -198,7 +215,25 @@
         }
 
         /* Mobile adjustments */
-        @media (max-width: 768px) {
+        @media (max-width: 767.98px) {
+            .sidebar {
+                transform: translateX(calc(-1 * var(--sidebar-width)));
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding-top: 60px;
+            }
+
+            .mobile-menu {
+                display: block !important;
+            }
+
             /* General mobile adjustments */
             body {
                 font-size: 14px;
@@ -379,45 +414,54 @@
     </script>
 </head>
 <body data-active-vp="{{ character.active_vitality_points }}" data-max-vp="{{ character.max_vitality_points }}" class="{% if character.is_inspired %} inspired {% endif %}">
-<div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar -->
-        <div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-            <div class="text-center p-3 border-bottom">
-                <div class="character-avatar">
-                    <i class="fas fa-user-shield"></i>
-                </div>
-                <h4 class="mb-0">{{ character.name }}</h4>
-                <p>Level {{ character.level }} {{ character.race }}</p>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="text-center p-3 border-bottom">
+            <div class="character-avatar">
+                <i class="fas fa-user-shield"></i>
             </div>
-
-            <nav class="nav flex-column mt-2">
-                <a class="nav-link" href="#overview"><i class="fas fa-home"></i> Overview</a>
-                <a class="nav-link" href="#attributes"><i class="fas fa-fist-raised"></i> Attributes</a>
-                <a class="nav-link" href="#abilities"><i class="fas fa-bolt"></i> Abilities</a>
-                <a class="nav-link" href="#Traits_and_Proficiencies"><i class="fas fa-scroll"></i> Traits & Proficiencies</a>
-                <a class="nav-link" href="#Manual_Debuffs"><i class="fas fa-skull"></i> Apply Buffs or Debuffs</a>
-                <a class="nav-link" href="#inventory"><i class="fas fa-suitcase"></i> Inventory</a>
-                <a class="nav-link" href="#on_the_ground"><i class="fas fa-box"></i> On The Ground</a>
-                <a class="nav-link" href="#stored_at_home"><i class="fas fa-warehouse"></i> Stored At Home</a>
-                <a class="nav-link" href="#" onclick="toggleView(); return false;">
-                    <i class="fas {% if view_mode == 'mobile' %}fa-desktop{% else %}fa-mobile-alt{% endif %}"></i>
-                    {% if view_mode == 'mobile' %}Desktop View{% else %}Mobile View{% endif %}
-                </a>
-                <a class="nav-link" href="{{ url_for('index') }}"><i class="fas fa-home"></i>Home</a>
-            </nav>
+            <h4 class="mb-0">{{ character.name }}</h4>
+            <p>Level {{ character.level }} {{ character.race }}</p>
         </div>
+
+        <nav class="nav flex-column mt-2">
+            <a class="nav-link" href="#overview"><i class="fas fa-home"></i> Overview</a>
+            <a class="nav-link" href="#attributes"><i class="fas fa-fist-raised"></i> Attributes</a>
+            <a class="nav-link" href="#abilities"><i class="fas fa-bolt"></i> Abilities</a>
+            <a class="nav-link" href="#Traits_and_Proficiencies"><i class="fas fa-scroll"></i> Traits & Proficiencies</a>
+            <a class="nav-link" href="#Manual_Debuffs"><i class="fas fa-skull"></i> Apply Buffs or Debuffs</a>
+            <a class="nav-link" href="#inventory"><i class="fas fa-suitcase"></i> Inventory</a>
+            <a class="nav-link" href="#on_the_ground"><i class="fas fa-box"></i> On The Ground</a>
+            <a class="nav-link" href="#stored_at_home"><i class="fas fa-warehouse"></i> Stored At Home</a>
+            <a class="nav-link" href="#" onclick="toggleView(); return false;">
+                <i class="fas {% if view_mode == 'mobile' %}fa-desktop{% else %}fa-mobile-alt{% endif %}"></i>
+                {% if view_mode == 'mobile' %}Desktop View{% else %}Mobile View{% endif %}
+            </a>
+            <a class="nav-link" href="{{ url_for('index') }}"><i class="fas fa-home"></i>Home</a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Mobile Toggle Button -->
+        <div class="d-md-none mobile-menu fixed-top bg-dark py-2 px-3 d-flex justify-content-between align-items-center shadow-sm">
+            <button class="btn btn-outline-light" type="button" id="sidebarToggleButton">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h5 class="mb-0 text-light">{{ character.name }}</h5>
+        </div>
+
+        <!-- Desktop Toggle Button -->
+        <div class="d-none d-md-block position-fixed" style="left: 10px; top: 10px; z-index: 1001;">
+            <button class="btn btn-sm btn-dark" id="desktopSidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <div class="d-md-none" style="height: 56px;"></div>
         
-        <!-- Main Content -->
-        <div class="col-md-10 main-content">
-            <!-- Mobile Toggle Button -->
-            <div class="d-md-none mobile-menu fixed-top bg-dark py-2 px-3 d-flex justify-content-between align-items-center shadow-sm">
-                <button class="btn btn-outline-light" type="button" id="sidebarToggleButton">
-                    <i class="fas fa-bars"></i> Menu
-                </button>
-                <h5 class="mb-0 text-light">{{ character.name }}</h5>
-            </div>
-            <div class="d-md-none" style="height: 56px;"></div>
+        <!-- Content Sections -->
+        <div class="container-fluid px-0">
             <!-- Overview Section -->
             <section id="overview" class="section">
                 <div class="card {% if character.is_inspired %} inspired {% endif %}">
@@ -490,9 +534,9 @@
                                         <div class="mb-3">
                                                 <p class="mb-1">Vitality Points</p>
                                             <p class="modifier">{{ character.active_vitality_points }} / {{ character.max_vitality_points }}</p>
-                                            <div class="progress mb-2" style="height: 8px;">
-                                                <div class="progress-bar health-bar vp-bar" role="progressbar"
-                                                     style="width: {% if character.max_vitality_points > 0 %}{{ (character.active_vitality_points / character.max_vitality_points) * 100 }}{% else %}0{% endif %}%"
+                                        <div class="progress mb-2" style="height: 8px;">
+                                            <div class="progress-bar health-bar vp-bar" role="progressbar"
+                                                 style="width: {% if character.max_vitality_points > 0 %}{{ (character.active_vitality_points / character.max_vitality_points) * 100 }}{% else %}0{% endif %}%"
                                                          aria-valuenow="{{ character.active_vitality_points }}"
                                                          aria-valuemin="0"
                                                          aria-valuemax="{{ character.max_vitality_points }}">
@@ -588,14 +632,15 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Combat Equipment Row -->
-                        <div class="row mt-3">
-                            <div class="col-12">
+                    <!-- Combat Equipment Row -->
+                    <div class="row mt-3">
+                        <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                                        <h6 class="mb-0">Combat Equipment</h6>
-                    </div>
+                                <h6 class="mb-0">Combat Equipment</h6>
+                            </div>
                                     <div class="card-body p-2">
                                         <div class="row">
                                             <!-- Weapon Card -->
@@ -614,129 +659,129 @@
                                                         </button>
                                                     </div>
                                                     <div class="collapse" id="weaponDetails">
-                    <div class="card-body">
-                                                            <div class="stat-inner-box mb-3">
-                                                                <form action="/character/{{ character.name }}/equip_weapon" method="POST">
-                                                                    <label for="weapon">Select Weapon:</label>
-                                                                    <select id="weapon" name="selected_weapon"
-                                                                            class="form-select form-select-sm" onchange="submitFormWithScroll(this.form)">
-                                                                        <option value="Unarmed" {% if not character.weapon.name %}selected{% endif %}>
-                                                                            Unarmed
-                                                                        </option>
-                                                                        {% for item in weapon_items %}
-                                                                        <option value="{{ item['item_name'] }}" {% if item['item_name'] == character.weapon.name %}selected{% endif %}>
-                                                                            {{ item['item_name'] }}
-                                                                        </option>
-                                                                        {% endfor %}
-                                                                    </select>
-                                                                </form>
+                            <div class="card-body">
+                                                        <div class="stat-inner-box mb-3">
+                                                            <form action="/character/{{ character.name }}/equip_weapon" method="POST">
+                                                                <label for="weapon">Select Weapon:</label>
+                                                                <select id="weapon" name="selected_weapon"
+                                                                        class="form-select form-select-sm" onchange="submitFormWithScroll(this.form)">
+                                                                    <option value="Unarmed" {% if not character.weapon.name %}selected{% endif %}>
+                                                                        Unarmed
+                                                                    </option>
+                                                                    {% for item in weapon_items %}
+                                                                    <option value="{{ item['item_name'] }}" {% if item['item_name'] == character.weapon.name %}selected{% endif %}>
+                                                                        {{ item['item_name'] }}
+                                                                    </option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </form>
+                                        </div>
+
+                                                        <div class="stat-inner-box mb-3">
+                                                            <form action="/character/{{ character.name }}/apply_weapon_proficiency" method="POST">
+                                                                <label for="weapon_proficiency">Select Proficiency:</label>
+                                                                <select id="weapon_proficiency" name="selected_weapon_proficiency"
+                                                                        class="form-select form-select-sm" onchange="submitFormWithScroll(this.form)">
+                                                                    <option value="NO_SELECTION" {% if not character.weapon.weapon_proficiency %}selected{% endif %}>
+                                                                        None Applies
+                                                                    </option>
+                                                                    {% for skill_name in character.skills.keys() %}
+                                                                    <option value="{{ skill_name }}" {% if skill_name == character.weapon.weapon_proficiency %}selected{% endif %}>
+                                                                        {{ skill_name }}
+                                                                    </option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </form>
                                     </div>
 
-                                                            <div class="stat-inner-box mb-3">
-                                                                <form action="/character/{{ character.name }}/apply_weapon_proficiency" method="POST">
-                                                                    <label for="weapon_proficiency">Select Proficiency:</label>
-                                                                    <select id="weapon_proficiency" name="selected_weapon_proficiency"
-                                                                            class="form-select form-select-sm" onchange="submitFormWithScroll(this.form)">
-                                                                        <option value="NO_SELECTION" {% if not character.weapon.weapon_proficiency %}selected{% endif %}>
-                                                                            None Applies
-                                                                        </option>
-                                                                        {% for skill_name in character.skills.keys() %}
-                                                                        <option value="{{ skill_name }}" {% if skill_name == character.weapon.weapon_proficiency %}selected{% endif %}>
-                                                                            {{ skill_name }}
-                                                                        </option>
-                                                                        {% endfor %}
-                                                                    </select>
-                                                                </form>
+                                                        <div class="row mb-2">
+                                                            <div class="col-md-6">
+                                                                <div class="stat-inner-box">
+                                                                    <p class="mb-1">Weapon Damage Dice</p>
+                                                                    <p class="modifier">{{ character.weapon.damage_dice }}</p>
+                                        </div>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                        <div class="stat-inner-box">
+                                                                    <p class="mb-1">Weapon Modifier</p>
+                                                                    <p class="modifier">{{ character.weapon.weapon_modifiers|int if character.weapon.weapon_modifiers|int < 0 else '+' + character.weapon.weapon_modifiers|string }}</p>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                                            <div class="row mb-2">
-                                                                <div class="col-md-6">
-                                                                    <div class="stat-inner-box">
-                                                                        <p class="mb-1">Weapon Damage Dice</p>
-                                                                        <p class="modifier">{{ character.weapon.damage_dice }}</p>
+                                        <div class="stat-inner-box">
+                                                            <p class="mb-1">Stat Modifier</p>
+                                                            <p class="modifier">{{ character.weapon.weapon_stat_modifier }}</p>
+                                    </div>
+
+                                                        <div class="stat-inner-box">
+                                                            <p class="mb-1">Weapon Conditions</p>
+                                                            <p class="modifier">{{ character.weapon.weapon_conditions }}</p>
+                                    </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+
+                                        <!-- Armor Card -->
+                                        <div class="col-md-6">
+                                            <div class="card">
+                                                <div class="card-header d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 class="mb-0">{{ character.armor.name if character.armor.name else 'No Armor' }}</h6>
+                                                        <div class="d-flex gap-3 mt-1">
+                                                            <small>AC: <span class="text-white">{{ character.total_ac }}</span></small>
+                                                            {% if character.shield_equipped %}
+                                                            <small><i class="fas fa-shield-alt text-white"></i></small>
+                                                            {% endif %}
+                                                            {% if character.temp_armor_modifier != 0 %}
+                                                            <small>Temp: <span class="text-white">{{ character.temp_armor_modifier|int if character.temp_armor_modifier|int < 0 else '+' + character.temp_armor_modifier|string }}</span></small>
+                                                            {% endif %}
+                                </div>
+                            </div>
+                                                    <button type="button" class="btn btn-character" data-bs-toggle="collapse" data-bs-target="#armorDetails">
+                                                        <i class="fas fa-chevron-down"></i>
+                                                    </button>
+                                </div>
+                                                <div class="collapse" id="armorDetails">
+                                                    <div class="card-body">
+                                                        <div class="stat-inner-box mb-3">
+                                                            <form action="/character/{{ character.name }}/equip_armor" method="POST">
+                                                                <label for="armor">Select Armor:</label>
+                                                                <select id="armor" name="selected_armor" class="form-select form-select-sm" onchange="submitFormWithScroll(this.form)">
+                                                                    <option value="No Armor" {% if not character.armor.name %}selected{% endif %}>No Armor</option>
+                                                                    {% for item in armor_items %}
+                                                                    <option value="{{ item['item_name'] }}" {% if item['item_name'] == character.armor.name %}selected{% endif %}>
+                                                                        {{ item['item_name'] }}
+                                                                    </option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </form>
+                                                        </div>
+
+                                                        <div class="stat-inner-box mb-3">
+                                                            <form action="/character/{{ character.name }}/toggle_shield" method="POST">
+                                                                <div class="form-check">
+                                                                    <input type="checkbox" id="shield_equipped" name="shield_equipped" class="form-check-input" 
+                                                                        {% if character.shield_equipped %}checked{% endif %} 
+                                                                        onchange="submitFormWithScroll(this.form)">
+                                                                    <label for="shield_equipped" class="form-check-label">Shield Equipped</label>
                                                                 </div>
-                                                                <div class="col-md-6">
-                                    <div class="stat-inner-box">
-                                                                        <p class="mb-1">Weapon Modifier</p>
-                                                                        <p class="modifier">{{ character.weapon.weapon_modifiers|int if character.weapon.weapon_modifiers|int < 0 else '+' + character.weapon.weapon_modifiers|string }}</p>
+                                                            </form>
+                                                        </div>
+
+                                <div class="stat-inner-box">
+                                                            <form action="/character/{{ character.name }}/update_temporary_armor_modifier" method="POST">
+                                                                <label for="temporary_armor_modifier">Temporary Armor Effect:</label>
+                                                                <div class="input-group input-group-sm">
+                                                                    <input type="number" id="temporary_armor_modifier" name="temporary_armor_modifier"
+                                                                        value="{{ character.temp_armor_modifier }}" step="1" class="form-control"
+                                                                        onchange="submitFormWithScroll(this.form)">
+                                </div>
+                                                            </form>
                                     </div>
                                 </div>
                             </div>
-
-                                    <div class="stat-inner-box">
-                                                                <p class="mb-1">Stat Modifier</p>
-                                                                <p class="modifier">{{ character.weapon.weapon_stat_modifier }}</p>
-                                    </div>
-
-                                                            <div class="stat-inner-box">
-                                                                <p class="mb-1">Weapon Conditions</p>
-                                                                <p class="modifier">{{ character.weapon.weapon_conditions }}</p>
-                                </div>
-                            </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                                            <!-- Armor Card -->
-                                            <div class="col-md-6">
-                                                <div class="card">
-                                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <h6 class="mb-0">{{ character.armor.name if character.armor.name else 'No Armor' }}</h6>
-                                                            <div class="d-flex gap-3 mt-1">
-                                                                <small>AC: <span class="text-white">{{ character.total_ac }}</span></small>
-                                                                {% if character.shield_equipped %}
-                                                                <small><i class="fas fa-shield-alt text-white"></i></small>
-                                                                {% endif %}
-                                                                {% if character.temp_armor_modifier != 0 %}
-                                                                <small>Temp: <span class="text-white">{{ character.temp_armor_modifier|int if character.temp_armor_modifier|int < 0 else '+' + character.temp_armor_modifier|string }}</span></small>
-                                                                {% endif %}
-                                    </div>
-                                </div>
-                                                        <button type="button" class="btn btn-character" data-bs-toggle="collapse" data-bs-target="#armorDetails">
-                                                            <i class="fas fa-chevron-down"></i>
-                                                        </button>
-                            </div>
-                                                    <div class="collapse" id="armorDetails">
-                                                        <div class="card-body">
-                                                            <div class="stat-inner-box mb-3">
-                                                                <form action="/character/{{ character.name }}/equip_armor" method="POST">
-                                                                    <label for="armor">Select Armor:</label>
-                                                                    <select id="armor" name="selected_armor" class="form-select form-select-sm" onchange="submitFormWithScroll(this.form)">
-                                                                        <option value="No Armor" {% if not character.armor.name %}selected{% endif %}>No Armor</option>
-                                                                        {% for item in armor_items %}
-                                                                        <option value="{{ item['item_name'] }}" {% if item['item_name'] == character.armor.name %}selected{% endif %}>
-                                                                            {{ item['item_name'] }}
-                                                                        </option>
-                                                                        {% endfor %}
-                                                                    </select>
-                                                                </form>
-                                                            </div>
-
-                                                            <div class="stat-inner-box mb-3">
-                                                                <form action="/character/{{ character.name }}/toggle_shield" method="POST">
-                                                                    <div class="form-check">
-                                                                        <input type="checkbox" id="shield_equipped" name="shield_equipped" class="form-check-input" 
-                                                                            {% if character.shield_equipped %}checked{% endif %} 
-                                                                            onchange="submitFormWithScroll(this.form)">
-                                                                        <label for="shield_equipped" class="form-check-label">Shield Equipped</label>
-                                                                    </div>
-                                                                </form>
-                                                            </div>
-
-                                    <div class="stat-inner-box">
-                                                                <form action="/character/{{ character.name }}/update_temporary_armor_modifier" method="POST">
-                                                                    <label for="temporary_armor_modifier">Temporary Armor Effect:</label>
-                                                                    <div class="input-group input-group-sm">
-                                                                        <input type="number" id="temporary_armor_modifier" name="temporary_armor_modifier"
-                                                                            value="{{ character.temp_armor_modifier }}" step="1" class="form-control"
-                                                                            onchange="submitFormWithScroll(this.form)">
-                                    </div>
-                                                                </form>
-                                </div>
-                            </div>
-                        </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -838,59 +883,63 @@
                         <h5 class="mb-0">Attributes</h5>
                     </div>
                     <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-6 col-md-2 mb-3">
+                        <!-- First Row: Strength, Dexterity, Constitution -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
                                 <div class="stat-box">
-                                    <h6>Strength</h6>
-                                            <div class="stat-inner-box">
-                                        <p class="modifier">{{ character.ST_modifier }}</p>
-                                            </div>
-                                    <p class="value">{{ character.active_ST }}</p>
-                                        </div>
-                            </div>
-                            <div class="col-6 col-md-2 mb-3">
-                                <div class="stat-box">
-                                    <h6>Dexterity</h6>
-                                            <div class="stat-inner-box">
-                                        <p class="modifier">{{ character.DX_modifier }}</p>
-                                            </div>
-                                    <p class="value">{{ character.active_DX }}</p>
-                                        </div>
+                                    <h6 class="mb-1">Strength</h6>
+                                    <div class="stat-inner-box py-1">
+                                        <p class="modifier mb-0">{{ character.ST_modifier }}</p>
                                     </div>
-                            <div class="col-6 col-md-2 mb-3">
-                                <div class="stat-box">
-                                    <h6>Constitution</h6>
-                                            <div class="stat-inner-box">
-                                        <p class="modifier">{{ character.CN_modifier }}</p>
-                                            </div>
-                                    <p class="value">{{ character.active_CN }}</p>
-                                        </div>
-                                            </div>
-                            <div class="col-6 col-md-2 mb-3">
-                                <div class="stat-box">
-                                    <h6>Charisma</h6>
-                                    <div class="stat-inner-box">
-                                        <p class="modifier">{{ character.CH_modifier }}</p>
-                                    </div>
-                                    <p class="value">{{ character.active_CH }}</p>
-                                    </div>
+                                    <p class="value mb-0">{{ character.active_ST }}</p>
                                 </div>
-                            <div class="col-6 col-md-2 mb-3">
+                            </div>
+                            <div class="col-md-4">
                                 <div class="stat-box">
-                                    <h6>Intelligence</h6>
-                                    <div class="stat-inner-box">
-                                        <p class="modifier">{{ character.IN_modifier }}</p>
+                                    <h6 class="mb-1">Dexterity</h6>
+                                    <div class="stat-inner-box py-1">
+                                        <p class="modifier mb-0">{{ character.DX_modifier }}</p>
                                     </div>
-                                    <p class="value">{{ character.active_IN }}</p>
-                                            </div>
-                                    </div>
-                            <div class="col-6 col-md-2 mb-3">
+                                    <p class="value mb-0">{{ character.active_DX }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
                                 <div class="stat-box">
-                                    <h6>Willpower</h6>
-                                    <div class="stat-inner-box">
-                                        <p class="modifier">{{ character.WP_modifier }}</p>
-                                            </div>
-                                    <p class="value">{{ character.active_WP }}</p>
+                                    <h6 class="mb-1">Constitution</h6>
+                                    <div class="stat-inner-box py-1">
+                                        <p class="modifier mb-0">{{ character.CN_modifier }}</p>
+                                    </div>
+                                    <p class="value mb-0">{{ character.active_CN }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Second Row: Intelligence, Willpower, Charisma -->
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="stat-box">
+                                    <h6 class="mb-1">Intelligence</h6>
+                                    <div class="stat-inner-box py-1">
+                                        <p class="modifier mb-0">{{ character.IN_modifier }}</p>
+                                    </div>
+                                    <p class="value mb-0">{{ character.active_IN }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stat-box">
+                                    <h6 class="mb-1">Willpower</h6>
+                                    <div class="stat-inner-box py-1">
+                                        <p class="modifier mb-0">{{ character.WP_modifier }}</p>
+                                    </div>
+                                    <p class="value mb-0">{{ character.active_WP }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stat-box">
+                                    <h6 class="mb-1">Charisma</h6>
+                                    <div class="stat-inner-box py-1">
+                                        <p class="modifier mb-0">{{ character.CH_modifier }}</p>
+                                    </div>
+                                    <p class="value mb-0">{{ character.active_CH }}</p>
                                 </div>
                             </div>
                         </div>
@@ -1391,7 +1440,7 @@
 </div>
         </main>
     </div>
-</div>
+</body>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
         crossorigin="anonymous"></script>
@@ -1458,59 +1507,32 @@
 </script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Get all links in the sidebar
-        const sidebarLinks = document.querySelectorAll('#sidebarMenu a');
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+        const mobileToggle = document.getElementById('sidebarToggleButton');
+        const desktopToggle = document.getElementById('desktopSidebarToggle');
 
-        // Add click event listener to each link
-        sidebarLinks.forEach(function(link) {
-            link.addEventListener('click', function() {
-                // Check if we're on mobile (sidebar is collapsible)
-                if (window.innerWidth < 768) {
-                    // Get the sidebar element
-                    const sidebar = document.getElementById('sidebarMenu');
+        function toggleSidebar() {
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('expanded');
+        }
 
-                    // If Bootstrap 5
-                    const bsCollapse = bootstrap.Collapse.getInstance(sidebar);
-                    if (bsCollapse) {
-                        bsCollapse.hide();
-                    }
-                }
-            });
-        });
-    });
-</script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get the toggle button and sidebar elements
-        const toggleButton = document.getElementById('sidebarToggleButton');
-        const sidebarElements = document.querySelectorAll('.sidebar');
-
-        // Add click event listener to the toggle button
-        if(toggleButton) {
-            toggleButton.addEventListener('click', function() {
-                // Toggle each sidebar element
-                sidebarElements.forEach(function(sidebar) {
-                    if(sidebar.classList.contains('show')) {
-                        sidebar.classList.remove('show');
-                    } else {
-                        sidebar.classList.add('show');
-                    }
-                });
+        if (mobileToggle) {
+            mobileToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('show');
             });
         }
 
-        // Get all links in the sidebar for auto-collapse
-        const sidebarLinks = document.querySelectorAll('.sidebar a');
+        if (desktopToggle) {
+            desktopToggle.addEventListener('click', toggleSidebar);
+        }
 
-        // Add click event listener to each link
+        // Close sidebar when clicking links on mobile
+        const sidebarLinks = document.querySelectorAll('.sidebar a');
         sidebarLinks.forEach(function(link) {
             link.addEventListener('click', function() {
-                // Check if we're on mobile
                 if (window.innerWidth < 768) {
-                    // Hide all sidebar elements
-                    sidebarElements.forEach(function(sidebar) {
-                        sidebar.classList.remove('show');
-                    });
+                    sidebar.classList.remove('show');
                 }
             });
         });
@@ -1617,8 +1639,5 @@ window.onclick = function(event) {
     }
 </script>
 </body>
-</body>
-
-
 </html>
 

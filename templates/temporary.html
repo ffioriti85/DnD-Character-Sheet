@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+     <!-- Abilities & Debuffs -->
+            <section id="abilities" class="section">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Abilities & Conditions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Active Abilities</h5>
+                                {% for ability in character.active_abilities %}
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">{{ ability.name }}</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Description:</strong> {{ ability.description }}</p>
+                                        <p><strong>DC:</strong> {{ ability.dc }}</p>
+                                        <p><strong>Uses:</strong> {{ ability.uses_left }} / {{
+                                            ability.uses_per_long_rest }}</p>
+
+                                        <div class="btn-group btn-group-sm">
+                                            <form action="{{ url_for('use_ability', name=character.name, ability_id=ability.id) }}"
+                                                  method="post">
+                                                <button type="submit" class="btn btn-character" {% if
+                                                        ability.uses_left== 0 %} disabled {% endif %}>
+                                                    Use Charge
+                                                </button>
+                                            </form>
+
+                                            <form action="{{ url_for('decrease_dc', name=character.name, ability_id=ability.id) }}"
+                                                  method="post">
+                                                <button type="submit" class="btn btn-character">
+                                                    <i class="fas fa-arrow-down"></i> DC
+                                                </button>
+                                            </form>
+
+                                            <form action="{{ url_for('increase_dc', name=character.name, ability_id=ability.id) }}"
+                                                  method="post">
+                                                <button type="submit" class="btn btn-character">
+                                                    <i class="fas fa-arrow-up"></i> DC
+                                                </button>
+                                            </form>
+
+                                            <form action="{{ url_for('remove_active_ability', name=character.name, ability_id=ability.id) }}"
+                                                  method="post">
+                                                <button type="submit" class="btn btn-danger btn-sm">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+
+                                <button id="toggleFormButton" class="btn btn-character mt-2">
+                                    <i class="fas fa-plus"></i> Add Active Ability
+                                </button>
+
+                                <div id="addAbilityForm" class="card mt-3" style="display: none;">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Add Active Ability</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <form action="{{ url_for('add_active_ability', name=character.name) }}"
+                                              method="post">
+                                            <div class="mb-2">
+                                                <label for="ability_name" class="form-label">Ability Name:</label>
+                                                <input type="text" id="ability_name" name="ability_name"
+                                                       class="form-control form-control-sm" required>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label for="ability_description" class="form-label">Description:</label>
+                                                <textarea id="ability_description" name="ability_description"
+                                                          class="form-control form-control-sm" required></textarea>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label for="ability_dc" class="form-label">DC:</label>
+                                                <input type="number" id="ability_dc" name="ability_dc"
+                                                       class="form-control form-control-sm" required>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label for="rest_type" class="form-label">Recharges on:</label>
+                                                <select id="rest_type" name="rest_type"
+                                                        class="form-select form-select-sm" required>
+                                                    <option value="short_rest">Short Rest</option>
+                                                    <option value="long_rest">Long Rest</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label for="ability_uses" class="form-label">Uses per Rest:</label>
+                                                <input type="number" id="ability_uses" name="ability_uses"
+                                                       class="form-control form-control-sm" required>
+                                            </div>
+                                            <button type="submit" class="btn btn-character">Add Ability</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h5>Active Buffs and Debuffs</h5>
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <p>{{ character.injury_fatigue_debuffs | safe }}</p>
+
+
+                                        {% set debuff_labels = {
+                                        "debuff_st": "Strength",
+                                        "debuff_dx": "Dexterity",
+                                        "debuff_in": "Intelligence",
+                                        "debuff_ch": "Charisma",
+                                        "debuff_cn": "Constitution",
+                                        "debuff_wp": "Wisdom",
+                                        "debuff_movement": "Movement Speed",
+                                        "debuff_carry_capacity":"Carry Capacity By Size",
+                                        "debuff_height": "Height",
+                                        "debuff_max_vp": "Max Vitality Points",
+                                        "debuff_max_wp": "Max Wound Points"
+                                        } %}
+                                        {% for debuff in character.debuffs %}
+                                        <div class="stat-inner-box">
+
+
+                                            {% if debuff.value != 0 %}
+                                            {% if debuff.name in debuff_labels %}
+                                            <span>{{ debuff.value }} {{ debuff_labels[debuff.name] }} by {{ debuff.reason }}</span>
+                                            {% else %}
+                                            {% set name_parts = debuff.name.split('_') %}
+                                            {% if name_parts|length > 1 %}
+                                            <span>{{ debuff.value }} {{ name_parts[1] | replace('_', ' ') }} by {{ debuff.reason }}</span>
+                                            {% else %}
+                                            <span>{{ debuff.value }} {{ debuff.name }} by {{ debuff.reason }}</span>
+                                            {% endif %}
+                                            {% endif %}
+
+                                            <form action="{{ url_for('remove_debuff', name=character.name, debuff_id=debuff.id) }}"
+                                                  method="post"
+                                                  style="display: inline;">
+                                                {% if debuff.removable %}
+                                                <button type="submit" class="btn btn-danger btn-sm" style="display: inline-block;">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                                <br>
+                                                {% endif %}
+                                                {% if not debuff.removable %}<br> {% endif %}
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+            </section>

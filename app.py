@@ -23,8 +23,6 @@ if not os.path.exists(DATA_FOLDER):
 app.secret_key = 'your-secret-key-here'  # Replace with a secure secret key in production
 
 # TODO:
-#   ADD to option to use a CHARGE of an Item
-#   Reformat Inventory to be more friendly
 #   Add the items on the ground to be "global"?
 #
 

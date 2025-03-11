@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Trait</title>
+</head>
+<body>
+    <h1>Edit Trait: {{ trait.name }}</h1>
+    <form action="{{ url_for('update_trait', name=character.name, trait_id=trait.id) }}" method="post">
+        <label for="trait_name">Trait Name:</label>
+        <input type="text" id="trait_name" name="trait_name" value="{{ trait.name }}" required><br><br>
+
+        <label for="trait_description">Description:</label>
+        <textarea id="trait_description" name="trait_description" required>{{ trait.description }}</textarea><br><br>
+
+        <button type="submit">Save Changes</button>
+    </form>
+    <a href="{{ url_for('view_character', name=character.name) }}">Cancel</a>
+</body>
+</html>

@@ -400,16 +400,16 @@
                 <a class="nav-link" href="#inventory"><i class="fas fa-suitcase"></i> Inventory</a>
                 <a class="nav-link" href="#on_the_ground"><i class="fas fa-box"></i> On The Ground</a>
                 <a class="nav-link" href="#stored_at_home"><i class="fas fa-warehouse"></i> Stored At Home</a>
+                <a class="nav-link" href="#" onclick="toggleView(); return false;">
+                    <i class="fas {% if view_mode == 'mobile' %}fa-desktop{% else %}fa-mobile-alt{% endif %}"></i>
+                    {% if view_mode == 'mobile' %}Desktop View{% else %}Mobile View{% endif %}
+                </a>
+                <a class="nav-link" href="{{ url_for('index') }}"><i class="fas fa-home"></i>Home</a>
             </nav>
-
-            <div class="mt-4 p-3 text-center">
-                <a href="{{ url_for('index') }}" class="btn btn-light w-100"><i class="fas fa-arrow-left"></i> Back to
-                    Characters</a>
-            </div>
         </div>
-
+        
         <!-- Main Content -->
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+        <div class="col-md-10 main-content">
             <!-- Mobile Toggle Button -->
             <div class="d-md-none mobile-menu fixed-top bg-dark py-2 px-3 d-flex justify-content-between align-items-center shadow-sm">
                 <button class="btn btn-outline-light" type="button" id="sidebarToggleButton">
@@ -587,6 +587,7 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
                         <!-- Combat Equipment Row -->
                         <div class="row mt-3">
@@ -1604,6 +1605,15 @@ window.onclick = function(event) {
     function submitFormWithScroll(form) {
         sessionStorage.setItem('scrollPos', window.scrollY);
         form.submit();
+    }
+</script>
+<script>
+    function toggleView() {
+        const currentUrl = new URL(window.location.href);
+        const currentView = currentUrl.searchParams.get('view') || 'desktop';
+        const newView = currentView === 'desktop' ? 'mobile' : 'desktop';
+        currentUrl.searchParams.set('view', newView);
+        window.location.href = currentUrl.toString();
     }
 </script>
 </body>

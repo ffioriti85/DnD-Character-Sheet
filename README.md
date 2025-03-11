@@ -1,6 +1,6 @@
-# D&D Character Sheet Manager
+# D&D Character Sheet Application
 
-A web-based character sheet manager for D&D-style tabletop RPGs, built with Flask.
+A Flask-based web application for managing D&D character sheets.
 
 ## Features
 
@@ -49,4 +49,20 @@ The project maintains two main branches:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Deployment on Render
+
+1. Create a new Web Service on Render
+2. Connect your GitHub repository
+3. Use the following settings:
+   - **Environment**: Python 3
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `gunicorn app:app`
+   - **Port**: 10000
+
+## Environment Variables
+
+Set the following environment variables in Render:
+- `SECRET_KEY`: A secure secret key for Flask sessions
+- `ADMIN_PASSWORD`: The password for accessing the application 

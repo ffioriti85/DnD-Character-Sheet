@@ -439,7 +439,10 @@ def view_character(name):
     if not character:
         return "Character not found", 404
     character = initialize_character(character)
-    # Calculate modifiers
+    
+    # Get view preference from query parameter
+    view_mode = request.args.get('view', 'desktop')
+    
     armor_items = [item for item in character['inventory'] if item.get('is_armor')]
     weapon_items = [item for item in character['inventory'] if item.get('is_weapon')]
     update_character(name)
@@ -464,7 +467,10 @@ def view_character(name):
             'stat_modifier': 'Strength',
             'modifier':0
         }
-    return render_template('view_character.html', character=character, armor_items=armor_items, weapon_items=weapon_items, purse_error=purse_error)
+
+    # Choose template based on view mode
+    template = 'mobile_character.html' if view_mode == 'mobile' else 'view_character.html'
+    return render_template(template, character=character, armor_items=armor_items, weapon_items=weapon_items, purse_error=purse_error, view_mode=view_mode)
 
 
 def calculate_injury_fatigue(active_wound, max_wound):
@@ -644,6 +650,9 @@ def update_character(name):
     if not character:
         return "Character not found", 404
 
+    # Get the current view mode from the request
+    view_mode = request.args.get('view', 'desktop')
+
     try:
         # Convert current values to integers
         active_vitality = int(character['active_vitality_points'])
@@ -804,7 +813,9 @@ def update_character(name):
     character['weapon_total_damage_modifier'] = calculate_total_weapon_damage_modifier(character)
     character['passive_perception']=10+int(character['WP_modifier'])
     save_character(character)
-    return redirect(url_for('view_character', name=name))
+    
+    # Redirect back to the same view mode
+    return redirect(url_for('view_character', name=name, view=view_mode))
 
 
 # Route to display the add item form for a specific character

@@ -1,0 +1,760 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mobile-character-sheet">
+    <!-- Character Info -->
+    <div class="character-info bg-dark text-light p-3 mb-3">
+        <h2 class="mb-0">{{ character.name }}</h2>
+        <p class="mb-0">Level {{ character.level }} {{ character.race }}</p>
+    </div>
+
+    <!-- Overview Section -->
+    <div class="collapsible">
+        <div class="collapsible-header">
+            <span>Overview</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="collapsible-content">
+            <!-- Movement and AC -->
+            <div class="stat-row">
+                <span>Movement Speed</span>
+                <span>{{ character.active_movement_speed }}ft</span>
+            </div>
+            <div class="stat-row">
+                <span>Armor Class</span>
+                <span>{{ character.total_ac }}</span>
+            </div>
+            
+            <!-- VP Section -->
+            <div class="stat-row">
+                <span>Vitality Points</span>
+                <div class="d-flex align-items-center">
+                    <span class="me-2">{{ character.active_vitality_points }}/{{ character.max_vitality_points }}</span>
+                    <div class="btn-group btn-group-sm">
+                        <form action="{{ url_for('update_character', name=character.name, view='mobile') }}" method="post" class="d-inline">
+                            <button type="submit" name="decrease_vitality" class="btn btn-danger btn-sm">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button type="submit" name="increase_vitality" class="btn btn-success btn-sm" {% if character.active_vitality_points == character.max_vitality_points %}disabled{% endif %}>
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button type="submit" name="heal_vitality" class="btn btn-info btn-sm" {% if character.active_vitality_points == character.max_vitality_points %}disabled{% endif %}>
+                                <i class="fas fa-heart"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WP Section -->
+            <div class="stat-row">
+                <span>Wound Points</span>
+                <div class="d-flex align-items-center">
+                    <span class="me-2">{{ character.active_wound_points }}/{{ character.max_wound_points }}</span>
+                    <div class="btn-group btn-group-sm">
+                        <form action="{{ url_for('update_character', name=character.name, view='mobile') }}" method="post" class="d-inline">
+                            <button type="submit" name="decrease_wound" class="btn btn-danger btn-sm">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button type="submit" name="increase_wound" class="btn btn-success btn-sm" {% if character.active_wound_points == character.max_wound_points %}disabled{% endif %}>
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button type="submit" name="heal_wound" class="btn btn-info btn-sm" {% if character.active_wound_points == character.max_wound_points %}disabled{% endif %}>
+                                <i class="fas fa-heart"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Injury Fatigue Section -->
+            <div class="stat-row">
+                <span>Injury Fatigue</span>
+                <div class="d-flex align-items-center">
+                    <span class="me-2">{{ character.injury_fatigue + character.extra_injury_fatigue }}</span>
+                    <div class="btn-group btn-group-sm">
+                        <form action="{{ url_for('update_character', name=character.name, view='mobile') }}" method="post" class="d-inline">
+                            <button type="submit" name="increase_extra_injury_fatigue" class="btn btn-danger btn-sm">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button type="submit" name="decrease_extra_injury_fatigue" class="btn btn-success btn-sm">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button type="submit" name="heal_extra_injury_fatigue" class="btn btn-info btn-sm">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exhaustion Section -->
+            <div class="stat-row">
+                <span>Exhaustion</span>
+                <div class="d-flex align-items-center">
+                    <span class="me-2">{{ character.exhaustion }}</span>
+                    <div class="btn-group btn-group-sm">
+                        <form action="{{ url_for('update_character', name=character.name, view='mobile') }}" method="post" class="d-inline">
+                            <button type="submit" name="increase_exhaustion" class="btn btn-danger btn-sm">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button type="submit" name="decrease_exhaustion" class="btn btn-success btn-sm">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button type="submit" name="heal_exhaustion" class="btn btn-info btn-sm">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {% if character.injury_fatigue_debuffs != "None" %}
+            <div class="alert alert-warning mt-2">
+                <small>{{ character.injury_fatigue_debuffs | safe }}</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Equipment Section -->
+    <div class="collapsible">
+        <div class="collapsible-header">
+            <span>Equipment ({{ character.weapon.name if character.weapon.name else 'Unarmed' }} | Hit: {{ character.weapon_hit_chances|int if character.weapon_hit_chances|int < 0 else '+' + character.weapon_hit_chances|string }} | Dmg: {{ character.weapon_total_damage_modifier|int if character.weapon_total_damage_modifier|int < 0 else '+' + character.weapon_total_damage_modifier|string }})</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="collapsible-content">
+            <div class="stat-row">
+                <span>Weapon:</span>
+                <form action="/character/{{ character.name }}/equip_weapon" method="POST" class="d-inline">
+                    <select name="selected_weapon" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="Unarmed" {% if not character.weapon.name %}selected{% endif %}>Unarmed</option>
+                        {% for item in weapon_items %}
+                        <option value="{{ item['item_name'] }}" {% if item['item_name'] == character.weapon.name %}selected{% endif %}>
+                            {{ item['item_name'] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+            <div class="stat-row">
+                <span>Armor:</span>
+                <form action="/character/{{ character.name }}/equip_armor" method="POST" class="d-inline">
+                    <select name="selected_armor" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="No Armor" {% if not character.armor.name %}selected{% endif %}>No Armor</option>
+                        {% for item in armor_items %}
+                        <option value="{{ item['item_name'] }}" {% if item['item_name'] == character.armor.name %}selected{% endif %}>
+                            {{ item['item_name'] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+            <div class="stat-row">
+                <span>Shield:</span>
+                <form action="/character/{{ character.name }}/toggle_shield" method="POST" class="d-inline">
+                    <div class="form-check">
+                        <input type="checkbox" name="shield_equipped" class="form-check-input" 
+                            {% if character.shield_equipped %}checked{% endif %} 
+                            onchange="this.form.submit()">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Buffs and Debuffs Section -->
+    <div class="collapsible">
+        <div class="collapsible-header">
+            <span>Buffs & Debuffs</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="collapsible-content">
+            <!-- Active Buffs and Debuffs -->
+            {% if character.injury_fatigue_debuffs %}
+                <div class="stat-row">{{ character.injury_fatigue_debuffs | safe }}</div>
+            {% endif %}
+            {% set debuff_labels = {
+                "debuff_st": "Strength",
+                "debuff_dx": "Dexterity",
+                "debuff_in": "Intelligence",
+                "debuff_ch": "Charisma",
+                "debuff_cn": "Constitution",
+                "debuff_wp": "Wisdom",
+                "debuff_movement": "Movement Speed",
+                "debuff_carry_capacity":"Carry Capacity",
+                "debuff_height": "Height",
+                "debuff_max_vp": "Max VP",
+                "debuff_max_wp": "Max WP"
+            } %}
+            {% for debuff in character.debuffs %}
+                {% if debuff.value != 0 %}
+                <div class="stat-row">
+                    <span>
+                        {% if debuff.name in debuff_labels %}
+                            {{ debuff.value }} {{ debuff_labels[debuff.name] }}
+                        {% else %}
+                            {% set name_parts = debuff.name.split('_') %}
+                            {% if name_parts|length > 1 %}
+                                {{ debuff.value }} {{ name_parts[1] | replace('_', ' ') }}
+                            {% else %}
+                                {{ debuff.value }} {{ debuff.name }}
+                            {% endif %}
+                        {% endif %}
+                        by {{ debuff.reason }}
+                    </span>
+                    {% if debuff.removable %}
+                    <form action="{{ url_for('remove_debuff', name=character.name, debuff_id=debuff.id) }}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
+            {% endfor %}
+
+            <!-- Add New Buff/Debuff -->
+            <div class="add-debuff-form mt-2">
+                <form action="{{ url_for('add_debuff', name=character.name) }}" method="post">
+                    <select name="debuff_name" class="form-select form-select-sm mb-1">
+                        <option value="debuff_st">Strength</option>
+                        <option value="debuff_dx">Dexterity</option>
+                        <option value="debuff_in">Intelligence</option>
+                        <option value="debuff_ch">Charisma</option>
+                        <option value="debuff_cn">Constitution</option>
+                        <option value="debuff_wp">Wisdom</option>
+                        <option value="debuff_movement">Movement Speed</option>
+                        <option value="debuff_AC">Armor Class</option>
+                        <option value="debuff_carry_capacity">Carry Capacity</option>
+                        <option value="debuff_height">Height</option>
+                        <option value="debuff_max_vp">Max VP</option>
+                        <option value="debuff_max_wp">Max WP</option>
+                        {% for skill_name in character.skills.keys() %}
+                        <option value="debuff_{{ skill_name|replace(' ', '_') }}">{{ skill_name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="input-group input-group-sm mb-1">
+                        <input type="number" name="debuff_value" class="form-control" placeholder="Value" min="0" required>
+                        <input type="text" name="debuff_reason" class="form-control" placeholder="Reason">
+                    </div>
+                    <div class="btn-group btn-group-sm w-100">
+                        <button type="submit" name="operation" value="buff" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Buff
+                        </button>
+                        <button type="submit" name="operation" value="debuff" class="btn btn-danger">
+                            <i class="fas fa-minus"></i> Debuff
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Section -->
+    <div class="collapsible">
+        <div class="collapsible-header">
+            <span>Stats</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="collapsible-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">ST</div>
+                    <div class="stat-modifier">{{ character.ST_modifier if character.ST_modifier >= 0 else character.ST_modifier }}</div>
+                    <div class="stat-value">{{ character.active_ST }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">DX</div>
+                    <div class="stat-modifier">{{ character.DX_modifier if character.DX_modifier >= 0 else character.DX_modifier }}</div>
+                    <div class="stat-value">{{ character.active_DX }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">CN</div>
+                    <div class="stat-modifier">{{ character.CN_modifier if character.CN_modifier >= 0 else character.CN_modifier }}</div>
+                    <div class="stat-value">{{ character.active_CN }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">IN</div>
+                    <div class="stat-modifier">{{ character.IN_modifier if character.IN_modifier >= 0 else character.IN_modifier }}</div>
+                    <div class="stat-value">{{ character.active_IN }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">WP</div>
+                    <div class="stat-modifier">{{ character.WP_modifier if character.WP_modifier >= 0 else character.WP_modifier }}</div>
+                    <div class="stat-value">{{ character.active_WP }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">CH</div>
+                    <div class="stat-modifier">{{ character.CH_modifier if character.CH_modifier >= 0 else character.CH_modifier }}</div>
+                    <div class="stat-value">{{ character.active_CH }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Traits Section -->
+    <div class="collapsible">
+        <div class="collapsible-header">
+            <span>Traits</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="collapsible-content">
+            {% if character.traits %}
+                {% for trait in character.traits %}
+                <div class="trait-item">
+                    <div class="trait-header" onclick="toggleTraitDescription('{{ trait.id }}')">
+                        <span class="trait-name">{{ trait.name }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="trait-description" id="trait-{{ trait.id }}" style="display: none;">
+                        {{ trait.description }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-muted p-2">No traits added yet.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Active Abilities Section -->
+    <div class="collapsible">
+        <div class="collapsible-header">
+            <span>Active Abilities</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="collapsible-content">
+            {% if character.active_abilities %}
+                {% for ability in character.active_abilities %}
+                <div class="ability-item">
+                    <div class="ability-header" onclick="toggleAbilityDescription('{{ ability.id }}')">
+                        <span class="ability-name">{{ ability.name }}</span>
+                        <span class="ability-uses">({{ ability.uses_left }}/{{ ability.uses_per_long_rest }})</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="ability-description" id="ability-{{ ability.id }}" style="display: none;">
+                        <p>{{ ability.description }}</p>
+                        <div class="ability-actions">
+                            <div class="btn-group btn-group-sm">
+                                <form action="{{ url_for('use_ability', name=character.name, ability_id=ability.id) }}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-primary" {% if ability.uses_left <= 0 %}disabled{% endif %}>
+                                        <i class="fas fa-hand-sparkles"></i> Use
+                                    </button>
+                                </form>
+                                <div class="btn-group btn-group-sm">
+                                    <form action="{{ url_for('decrease_dc', name=character.name, ability_id=ability.id) }}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-secondary">
+                                            <i class="fas fa-minus"></i> DC
+                                        </button>
+                                    </form>
+                                    <span class="btn btn-light">DC {{ ability.dc }}</span>
+                                    <form action="{{ url_for('increase_dc', name=character.name, ability_id=ability.id) }}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-secondary">
+                                            DC <i class="fas fa-plus"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-muted p-2">No active abilities added yet.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Inventory Section -->
+    <div class="collapsible">
+        <div class="collapsible-header">
+            <span>Inventory</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="collapsible-content">
+            <!-- Purse Section -->
+            <div class="stat-row">
+                <div class="coins">
+                    <span class="coin gold">{{ character.gold }}g</span>
+                    <span class="coin silver">{{ character.silver }}s</span>
+                    <span class="coin copper">{{ character.copper }}c</span>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-success" onclick="showPaymentModal('add')">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                    <button class="btn btn-danger" onclick="showPaymentModal('subtract')">
+                        <i class="fas fa-minus"></i> Pay
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Units</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in character.inventory %}
+                        <tr>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.units }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <form action="{{ url_for('store_item', name=character.name) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="item_name" value="{{ item.item_name }}">
+                                        <button type="submit" class="btn btn-warning btn-sm">
+                                            <i class="fas fa-box"></i>
+                                        </button>
+                                    </form>
+                                    <form action="{{ url_for('drop_item', name=character.name) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="item_name" value="{{ item.item_name }}">
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <a href="{{ url_for('add_item', name=character.name) }}" class="btn btn-success btn-sm w-100">
+                <i class="fas fa-plus"></i> Add Item
+            </a>
+        </div>
+    </div>
+
+    <!-- Notes Section -->
+    <div class="collapsible">
+        <div class="collapsible-header">
+            <span>Notes</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="collapsible-content">
+            {% if character.notes %}
+            <div class="notes-list">
+                {% for note_id, note in character.notes.items() %}
+                <div class="note-item">
+                    <div class="note-content">
+                        <small class="text-muted">{{ note.date }}</small>
+                        <p class="mb-1">{{ note.content }}</p>
+                    </div>
+                    <div class="note-actions">
+                        <button onclick="editNote('{{ note_id }}', '{{ note.content|replace("'", "\\'") }}')" class="btn btn-warning btn-sm">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <form action="{{ url_for('delete_note', name=character.name, note_id=note_id) }}" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <form id="noteForm" action="{{ url_for('add_note', name=character.name) }}" method="post" class="mt-2">
+                <input type="hidden" id="note_id" name="note_id" value="">
+                <div class="input-group input-group-sm">
+                    <input type="text" id="note_content" name="note_content" class="form-control" placeholder="Enter a new note..." required>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button type="button" id="cancelEditBtn" class="btn btn-secondary" style="display: none;" onclick="cancelEdit()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="action-buttons fixed-bottom bg-dark p-2">
+        <div class="btn-group w-100">
+            <button onclick="handleShortRest()" class="btn btn-secondary">
+                <i class="fas fa-bed"></i> Short Rest
+            </button>
+            <form action="{{ url_for('long_rest', name=character.name, view='mobile') }}" method="post" class="d-inline">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-moon"></i> Long Rest
+                </button>
+            </form>
+            <button onclick="toggleView()" class="btn btn-light">
+                <i class="fas fa-desktop"></i> Desktop
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentModalTitle">Add/Remove Money</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="paymentForm" action="{{ url_for('update_purse', name=character.name) }}" method="post">
+                    <input type="hidden" name="operation" id="paymentOperation" value="add">
+                    <div class="mb-3">
+                        <label class="form-label">Amount</label>
+                        <input type="number" name="amount" class="form-control" required min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Currency</label>
+                        <select name="currency" class="form-select">
+                            <option value="gold">Gold</option>
+                            <option value="silver">Silver</option>
+                            <option value="copper">Copper</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100" id="paymentSubmitBtn">Confirm</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const collapsibles = document.querySelectorAll('.collapsible-header');
+    
+    // Load saved states
+    const savedStates = JSON.parse(localStorage.getItem('collapsibleStates') || '{}');
+    
+    collapsibles.forEach((header, index) => {
+        const content = header.nextElementSibling;
+        const icon = header.querySelector('i');
+        const sectionId = `section-${index}`;
+        
+        // Apply saved state if it exists
+        if (savedStates[sectionId]) {
+            content.style.maxHeight = content.scrollHeight + "px";
+            icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+        }
+        
+        header.addEventListener('click', function() {
+            const content = this.nextElementSibling;
+            const icon = this.querySelector('i');
+            
+            // Toggle the content
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+                savedStates[sectionId] = false;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+                savedStates[sectionId] = true;
+            }
+            
+            // Save states to localStorage
+            localStorage.setItem('collapsibleStates', JSON.stringify(savedStates));
+        });
+    });
+});
+
+function editNote(noteId, content) {
+    document.getElementById('note_id').value = noteId;
+    document.getElementById('note_content').value = content;
+    document.getElementById('noteForm').action = "{{ url_for('edit_note', name=character.name) }}";
+    document.querySelector('#noteForm button[type="submit"]').innerHTML = '<i class="fas fa-save"></i>';
+    document.getElementById('cancelEditBtn').style.display = 'inline-block';
+}
+
+function cancelEdit() {
+    document.getElementById('note_id').value = '';
+    document.getElementById('note_content').value = '';
+    document.getElementById('noteForm').action = "{{ url_for('add_note', name=character.name) }}";
+    document.querySelector('#noteForm button[type="submit"]').innerHTML = '<i class="fas fa-plus"></i>';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+}
+
+function handleShortRest() {
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ url_for('short_rest', name=character.name, view='mobile') }}";
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function showPaymentModal(operation) {
+    const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+    const form = document.getElementById('paymentForm');
+    const title = document.getElementById('paymentModalTitle');
+    const submitBtn = document.getElementById('paymentSubmitBtn');
+    const operationInput = document.getElementById('paymentOperation');
+    
+    if (operation === 'add') {
+        title.textContent = 'Add Money';
+        submitBtn.className = 'btn btn-success w-100';
+        submitBtn.textContent = 'Add';
+        operationInput.value = 'add';
+    } else {
+        title.textContent = 'Pay Money';
+        submitBtn.className = 'btn btn-danger w-100';
+        submitBtn.textContent = 'Pay';
+        operationInput.value = 'subtract';
+    }
+    
+    modal.show();
+}
+
+function toggleView() {
+    window.location.href = "{{ url_for('view_character', name=character.name, view='desktop') }}";
+}
+
+function toggleTraitDescription(traitId) {
+    const description = document.getElementById(`trait-${traitId}`);
+    const icon = description.previousElementSibling.querySelector('i');
+    
+    if (description.style.display === 'none') {
+        description.style.display = 'block';
+        icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+    } else {
+        description.style.display = 'none';
+        icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+    }
+}
+
+function toggleAbilityDescription(abilityId) {
+    const description = document.getElementById(`ability-${abilityId}`);
+    const icon = description.previousElementSibling.querySelector('i');
+    
+    if (description.style.display === 'none') {
+        description.style.display = 'block';
+        icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+    } else {
+        description.style.display = 'none';
+        icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+    }
+}
+
+{% if purse_error %}
+    alert('{{ purse_error }}');
+{% endif %}
+</script>
+
+<style>
+.character-info {
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.collapsible {
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.collapsible-header {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.collapsible-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    padding: 0.5rem;
+}
+
+.stat-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    font-weight: bold;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
+.stat-modifier {
+    font-size: 1.5rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.stat-modifier::before {
+    content: "+";
+    display: inline-block;
+}
+
+.stat-modifier:not([data-positive])::before {
+    content: "";
+}
+
+.stat-value {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.trait-item, .ability-item {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.trait-header, .ability-header {
+    background-color: #f8f9fa;
+    padding: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.trait-name, .ability-name {
+    font-weight: bold;
+}
+
+.ability-uses {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin: 0 0.5rem;
+}
+
+.trait-description, .ability-description {
+    padding: 0.75rem;
+    background-color: #fff;
+    border-top: 1px solid #dee2e6;
+}
+
+.ability-actions {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+</style>
+{% endblock %} 

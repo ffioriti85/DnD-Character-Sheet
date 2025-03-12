@@ -1,11 +1,18 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="mobile-character-sheet">
+<div class="mobile-character-sheet {% if character.is_inspired %}inspired{% endif %}">
     <!-- Character Info -->
-    <div class="character-info bg-dark text-light p-3 mb-3">
-        <h2 class="mb-0">{{ character.name }}</h2>
-        <p class="mb-0">Level {{ character.level }} {{ character.race }}</p>
+    <div class="character-info bg-dark text-light p-3 mb-3 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-0">{{ character.name }}</h2>
+            <p class="mb-0">Level {{ character.level }} {{ character.race }}</p>
+        </div>
+        <form action="{{ url_for('is_inspired', name=character.name, view='mobile') }}" method="post">
+            <button type="submit" class="btn {% if character.is_inspired %}btn-warning{% else %}btn-outline-light{% endif %} btn-sm">
+                <i class="fas fa-star"></i> {% if character.is_inspired %}Use Inspiration{% else %}Inspiration{% endif %}
+            </button>
+        </form>
     </div>
 
     <!-- Overview Section -->
@@ -117,6 +124,48 @@
         </div>
     </div>
 
+    <!-- Stats Section -->
+    <div class="collapsible">
+        <div class="collapsible-header">
+            <span>Stats</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="collapsible-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">ST</div>
+                    <div class="stat-modifier">{{ character.ST_modifier if character.ST_modifier >= 0 else character.ST_modifier }}</div>
+                    <div class="stat-value">{{ character.active_ST }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">DX</div>
+                    <div class="stat-modifier">{{ character.DX_modifier if character.DX_modifier >= 0 else character.DX_modifier }}</div>
+                    <div class="stat-value">{{ character.active_DX }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">CN</div>
+                    <div class="stat-modifier">{{ character.CN_modifier if character.CN_modifier >= 0 else character.CN_modifier }}</div>
+                    <div class="stat-value">{{ character.active_CN }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">IN</div>
+                    <div class="stat-modifier">{{ character.IN_modifier if character.IN_modifier >= 0 else character.IN_modifier }}</div>
+                    <div class="stat-value">{{ character.active_IN }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">WP</div>
+                    <div class="stat-modifier">{{ character.WP_modifier if character.WP_modifier >= 0 else character.WP_modifier }}</div>
+                    <div class="stat-value">{{ character.active_WP }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">CH</div>
+                    <div class="stat-modifier">{{ character.CH_modifier if character.CH_modifier >= 0 else character.CH_modifier }}</div>
+                    <div class="stat-value">{{ character.active_CH }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Equipment Section -->
     <div class="collapsible">
         <div class="collapsible-header">
@@ -126,16 +175,28 @@
         <div class="collapsible-content">
             <div class="stat-row">
                 <span>Weapon:</span>
-                <form action="/character/{{ character.name }}/equip_weapon" method="POST" class="d-inline">
-                    <select name="selected_weapon" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="Unarmed" {% if not character.weapon.name %}selected{% endif %}>Unarmed</option>
-                        {% for item in weapon_items %}
-                        <option value="{{ item['item_name'] }}" {% if item['item_name'] == character.weapon.name %}selected{% endif %}>
-                            {{ item['item_name'] }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </form>
+                <div class="d-flex gap-2">
+                    <form action="/character/{{ character.name }}/equip_weapon" method="POST" class="d-inline">
+                        <select name="selected_weapon" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="Unarmed" {% if not character.weapon.name %}selected{% endif %}>Unarmed</option>
+                            {% for item in weapon_items %}
+                            <option value="{{ item['item_name'] }}" {% if item['item_name'] == character.weapon.name %}selected{% endif %}>
+                                {{ item['item_name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                    <form action="/character/{{ character.name }}/apply_weapon_proficiency" method="POST" class="d-inline">
+                        <select name="selected_weapon_proficiency" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="NO_SELECTION" {% if not character.weapon.weapon_proficiency %}selected{% endif %}>No Proficiency</option>
+                            {% for skill_name in character.skills.keys()|sort %}
+                            <option value="{{ skill_name }}" {% if skill_name == character.weapon.weapon_proficiency %}selected{% endif %}>
+                                {{ skill_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
             </div>
             <div class="stat-row">
                 <span>Armor:</span>
@@ -251,44 +312,55 @@
         </div>
     </div>
 
-    <!-- Stats Section -->
+    <!-- Proficiencies Section -->
     <div class="collapsible">
         <div class="collapsible-header">
-            <span>Stats</span>
+            <span>Proficiencies</span>
             <i class="fas fa-chevron-down"></i>
         </div>
         <div class="collapsible-content">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">ST</div>
-                    <div class="stat-modifier">{{ character.ST_modifier if character.ST_modifier >= 0 else character.ST_modifier }}</div>
-                    <div class="stat-value">{{ character.active_ST }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">DX</div>
-                    <div class="stat-modifier">{{ character.DX_modifier if character.DX_modifier >= 0 else character.DX_modifier }}</div>
-                    <div class="stat-value">{{ character.active_DX }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">CN</div>
-                    <div class="stat-modifier">{{ character.CN_modifier if character.CN_modifier >= 0 else character.CN_modifier }}</div>
-                    <div class="stat-value">{{ character.active_CN }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">IN</div>
-                    <div class="stat-modifier">{{ character.IN_modifier if character.IN_modifier >= 0 else character.IN_modifier }}</div>
-                    <div class="stat-value">{{ character.active_IN }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">WP</div>
-                    <div class="stat-modifier">{{ character.WP_modifier if character.WP_modifier >= 0 else character.WP_modifier }}</div>
-                    <div class="stat-value">{{ character.active_WP }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">CH</div>
-                    <div class="stat-modifier">{{ character.CH_modifier if character.CH_modifier >= 0 else character.CH_modifier }}</div>
-                    <div class="stat-value">{{ character.active_CH }}</div>
-                </div>
+            <!-- List of Proficiencies -->
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <tbody>
+                        {% for skill, data in character.skills.items()|sort %}
+                        <tr class="align-middle">
+                            <td>{{ skill }}</td>
+                            <td class="text-end"><strong>{{ data.get("total_value", 0) }}</strong></td>
+                            <td class="text-end" style="width: 80px;">
+                                <div class="btn-group btn-group-sm">
+                                    <form action="{{ url_for('decrease_proficiency', name=character.name, proficiency_id=skill )}}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-danger btn-sm px-1">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                    </form>
+                                    <form action="{{ url_for('increase_proficiency', name=character.name, proficiency_id=skill )}}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-success btn-sm px-1">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Add New Proficiency -->
+            <button type="button" class="btn btn-primary btn-sm w-100 mt-2" data-bs-toggle="collapse" data-bs-target="#addProficiencyForm">
+                <i class="fas fa-plus"></i> Add Proficiency
+            </button>
+
+            <div class="collapse mt-2" id="addProficiencyForm">
+                <form method="post" action="{{ url_for('add_custom_skill', name=character.name) }}">
+                    <div class="input-group input-group-sm">
+                        <input type="text" id="custom_skill_name" name="custom_skill_name" class="form-control" placeholder="Proficiency Name" required>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -303,7 +375,7 @@
             {% if character.traits %}
                 {% for trait in character.traits %}
                 <div class="trait-item">
-                    <div class="trait-header" onclick="toggleTraitDescription('{{ trait.id }}')">
+                    <div class="trait-header py-2 px-3" onclick="toggleTraitDescription('{{ trait.id }}')">
                         <span class="trait-name">{{ trait.name }}</span>
                         <i class="fas fa-chevron-down"></i>
                     </div>
@@ -328,35 +400,33 @@
             {% if character.active_abilities %}
                 {% for ability in character.active_abilities %}
                 <div class="ability-item">
-                    <div class="ability-header" onclick="toggleAbilityDescription('{{ ability.id }}')">
-                        <span class="ability-name">{{ ability.name }}</span>
-                        <span class="ability-uses">({{ ability.uses_left }}/{{ ability.uses_per_long_rest }})</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                    <div class="ability-description" id="ability-{{ ability.id }}" style="display: none;">
-                        <p>{{ ability.description }}</p>
-                        <div class="ability-actions">
-                            <div class="btn-group btn-group-sm">
-                                <form action="{{ url_for('use_ability', name=character.name, ability_id=ability.id) }}" method="post" class="d-inline">
-                                    <button type="submit" class="btn btn-primary" {% if ability.uses_left <= 0 %}disabled{% endif %}>
-                                        <i class="fas fa-hand-sparkles"></i> Use
+                    <div class="ability-header d-flex align-items-center gap-2" onclick="toggleAbilityDescription('{{ ability.id }}')">
+                        <div class="ability-name flex-grow-1">{{ ability.name }}</div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-light text-dark">DC {{ ability.dc }}</span>
+                            <span class="badge bg-secondary">{{ ability.uses_left }}/{{ ability.uses_per_long_rest }}</span>
+                            <div class="btn-group btn-group-sm" onclick="event.stopPropagation()">
+                                <form action="{{ url_for('decrease_dc', name=character.name, ability_id=ability.id) }}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm px-1">
+                                        <i class="fas fa-minus"></i>
                                     </button>
                                 </form>
-                                <div class="btn-group btn-group-sm">
-                                    <form action="{{ url_for('decrease_dc', name=character.name, ability_id=ability.id) }}" method="post" class="d-inline">
-                                        <button type="submit" class="btn btn-secondary">
-                                            <i class="fas fa-minus"></i> DC
-                                        </button>
-                                    </form>
-                                    <span class="btn btn-light">DC {{ ability.dc }}</span>
-                                    <form action="{{ url_for('increase_dc', name=character.name, ability_id=ability.id) }}" method="post" class="d-inline">
-                                        <button type="submit" class="btn btn-secondary">
-                                            DC <i class="fas fa-plus"></i>
-                                        </button>
-                                    </form>
-                                </div>
+                                <form action="{{ url_for('use_ability', name=character.name, ability_id=ability.id) }}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-primary btn-sm" {% if ability.uses_left <= 0 %}disabled{% endif %}>
+                                        <i class="fas fa-hand-sparkles"></i>
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('increase_dc', name=character.name, ability_id=ability.id) }}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm px-1">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </form>
                             </div>
+                            <i class="fas fa-chevron-down ms-2"></i>
                         </div>
+                    </div>
+                    <div class="ability-description" id="ability-{{ ability.id }}" style="display: none;">
+                        <p class="mb-0 p-2">{{ ability.description }}</p>
                     </div>
                 </div>
                 {% endfor %}
@@ -490,6 +560,9 @@
             <button onclick="toggleView()" class="btn btn-light">
                 <i class="fas fa-desktop"></i> Desktop
             </button>
+            <a href="{{ url_for('index') }}" class="btn btn-info">
+                <i class="fas fa-users"></i> Characters
+            </a>
         </div>
     </div>
 </div>
@@ -518,6 +591,27 @@
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary w-100" id="paymentSubmitBtn">Confirm</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Short Rest Modal -->
+<div class="modal fade" id="shortRestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Short Rest</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="shortRestForm" action="{{ url_for('short_rest', name=character.name, view='mobile') }}" method="post">
+                    <div class="mb-3">
+                        <label class="form-label">Roll your hit dice and enter the value:</label>
+                        <input type="number" name="hit_dice_roll" class="form-control" required min="1">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Take Short Rest</button>
                 </form>
             </div>
         </div>
@@ -580,11 +674,16 @@ function cancelEdit() {
 }
 
 function handleShortRest() {
-    var form = document.createElement('form');
-    form.method = 'POST';
-    form.action = "{{ url_for('short_rest', name=character.name, view='mobile') }}";
-    document.body.appendChild(form);
-    form.submit();
+    {% if character.active_vitality_points < character.max_vitality_points %}
+        const modal = new bootstrap.Modal(document.getElementById('shortRestModal'));
+        modal.show();
+    {% else %}
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{{ url_for('short_rest', name=character.name, view='mobile') }}";
+        document.body.appendChild(form);
+        form.submit();
+    {% endif %}
 }
 
 function showPaymentModal(operation) {
@@ -647,6 +746,11 @@ function toggleAbilityDescription(abilityId) {
 <style>
 .character-info {
     border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.mobile-character-sheet.inspired {
+    background-color: #fff3cd;
+    min-height: 100vh;
 }
 
 .collapsible {
@@ -718,14 +822,41 @@ function toggleAbilityDescription(abilityId) {
     margin-top: 0.25rem;
 }
 
-.trait-item, .ability-item {
+.trait-item {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 0.25rem;
+    overflow: hidden;
+}
+
+.trait-header {
+    background-color: #f8f9fa;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.trait-name {
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.trait-description {
+    padding: 0.5rem;
+    background-color: #fff;
+    border-top: 1px solid #dee2e6;
+    font-size: 0.9rem;
+}
+
+.ability-item {
     border: 1px solid #dee2e6;
     border-radius: 4px;
     margin-bottom: 0.5rem;
     overflow: hidden;
 }
 
-.trait-header, .ability-header {
+.ability-header {
     background-color: #f8f9fa;
     padding: 0.75rem;
     cursor: pointer;
@@ -734,7 +865,7 @@ function toggleAbilityDescription(abilityId) {
     align-items: center;
 }
 
-.trait-name, .ability-name {
+.ability-name {
     font-weight: bold;
 }
 
@@ -744,7 +875,7 @@ function toggleAbilityDescription(abilityId) {
     margin: 0 0.5rem;
 }
 
-.trait-description, .ability-description {
+.ability-description {
     padding: 0.75rem;
     background-color: #fff;
     border-top: 1px solid #dee2e6;

@@ -440,8 +440,17 @@ def view_character(name):
         return "Character not found", 404
     character = initialize_character(character)
     
-    # Get view preference from query parameter
-    view_mode = request.args.get('view', 'desktop')
+    # Get view preference from query parameter, fallback to session, then default to desktop
+    view_mode = request.args.get('view')
+    if view_mode:
+        # If view mode is explicitly set in URL, update session
+        session['view_mode'] = view_mode
+    elif 'view_mode' not in session:
+        # If no view mode in session, default to desktop
+        session['view_mode'] = 'desktop'
+    
+    # Use the view mode from session
+    current_view_mode = session['view_mode']
     
     armor_items = [item for item in character['inventory'] if item.get('is_armor')]
     weapon_items = [item for item in character['inventory'] if item.get('is_weapon')]
@@ -465,12 +474,12 @@ def view_character(name):
             'name': 'None',
             'damage_dice': 'd4',
             'stat_modifier': 'Strength',
-            'modifier':0
+            'modifier': 0
         }
 
-    # Choose template based on view mode
-    template = 'mobile_character.html' if view_mode == 'mobile' else 'view_character.html'
-    return render_template(template, character=character, armor_items=armor_items, weapon_items=weapon_items, purse_error=purse_error, view_mode=view_mode)
+    # Choose template based on view mode from session
+    template = 'mobile_character.html' if current_view_mode == 'mobile' else 'view_character.html'
+    return render_template(template, character=character, armor_items=armor_items, weapon_items=weapon_items, purse_error=purse_error, view_mode=current_view_mode)
 
 
 def calculate_injury_fatigue(active_wound, max_wound):

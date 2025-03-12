@@ -1540,39 +1540,18 @@
 </script>
 <script>
     function handleShortRest() {
-        // Get the values from the dataset attributes
-        var activeVP = parseInt(document.body.dataset.activeVp || 0);
-        var maxVP = parseInt(document.body.dataset.maxVp || 0);
-
-        console.log("Active VP:", activeVP, "Max VP:", maxVP);
-
+        const activeVP = {{ character.active_vitality_points }};
+        const maxVP = {{ character.max_vitality_points }};
+        
         if (activeVP < maxVP) {
-            // Character is damaged → Show modal with input field
-            document.getElementById("shortRestModal").style.display = "block";
+            const modal = new bootstrap.Modal(document.getElementById('shortRestModal'));
+            modal.show();
         } else {
-            // Character is at full health, just submit the form automatically
             var form = document.createElement('form');
             form.method = 'POST';
             form.action = "{{ url_for('short_rest', name=character.name) }}";
             document.body.appendChild(form);
             form.submit();
-        }
-    }
-
-    function closeModal() {
-        document.getElementById("shortRestModal").style.display = "none";
-    }
-
-    // Close the modal if user clicks outside of it
-    window.onclick = function(event) {
-        var shortRestModal = document.getElementById("shortRestModal");
-        var levelUpModal = document.getElementById("levelUpModal");
-        
-        if (event.target == shortRestModal) {
-            shortRestModal.style.display = "none";
-        }
-        if (event.target == levelUpModal) {
-            levelUpModal.style.display = "none";
         }
     }
 </script>
@@ -1638,6 +1617,27 @@ window.onclick = function(event) {
         window.location.href = currentUrl.toString();
     }
 </script>
+
+<!-- Short Rest Modal -->
+<div class="modal fade" id="shortRestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Short Rest</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="shortRestForm" action="{{ url_for('short_rest', name=character.name) }}" method="post">
+                    <div class="mb-3">
+                        <label class="form-label">Roll your hit dice ({{ character.hit_dice }}) and enter the value:</label>
+                        <input type="number" name="hit_dice_roll" class="form-control" required min="1">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Take Short Rest</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
 

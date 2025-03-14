@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,57 +16,214 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        /* Custom CSS */
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #FFD700;
+            --light-bg: #f8f9fa;
+            --dark-bg: #343a40;
+        }
+
+        body {
+            font-family: 'Cinzel', serif;
+            background-color: #f9f9f9;
+            color: #111;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: bold;
+            padding: 12px 15px;
+        }
+
+        .btn-character {
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 0.85rem;
+            border: none;
+            margin: 2px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-character:hover {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .form-control {
+            border-radius: 4px;
+            border: 1px solid #ced4da;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+
+        .form-label {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .page-title {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-size: 2.2rem;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-<div class="stats-row">
-    <h1>Create Character: {{ name }}</h1>
+    <div class="container">
+        <h1 class="page-title">Create Character: {{ name }}</h1>
 
-</div>
-<br>
-<div class="stats-row">
-    <form action="/create/{{ name }}" method="POST">
-        <!-- Basic Character Info -->
-        <label for="race">Race:</label>
-        <input type="text" id="race" name="race" required><br>
-        <label for="height">Height:</label>
-        <input type="text" id="height" name="height" required><br>
-        <label for="weight">Weight:</label>
-        <input type="text" id="weight" name="weight" required><br>
-        <label for="movement_speed">Movement Speed:</label>
-        <input type="text" id="movement_speed" name="movement_speed" required><br>
-        <label for="hit_dice">Hit Dice:</label>
-        <input type="text" id="hit_dice" name="hit_dice" required><br>
-</div>
-<br>
-        <div class="stats-row">
-        <!-- Attributes -->
-        <label for="ST">Strength (ST):</label>
-        <input type="number" id="ST" name="ST" required><br>
-        <label for="DX">Dexterity (DX):</label>
-        <input type="number" id="DX" name="DX" required><br>
-        <label for="CN">Constitution (CN):</label>
-        <input type="number" id="CN" name="CN" required><br>
-        <label for="CH">Charisma (CH):</label>
-        <input type="number" id="CH" name="CH" required><br>
-        <label for="IN">Intelligence (IN):</label>
-        <input type="number" id="IN" name="IN" required><br>
-        <label for="WP">Willpower (WP):</label>
-        <input type="number" id="WP" name="WP" required><br>
-</div>
-<br>
+        <form action="/create/{{ name }}" method="POST">
+            <div class="row">
+                <!-- Basic Character Info -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <i class="fas fa-user me-2"></i>Basic Character Info
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="race" class="form-label">Race:</label>
+                                <input type="text" id="race" name="race" class="form-control" required>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="height" class="form-label">Height:</label>
+                                        <input type="text" id="height" name="height" class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="weight" class="form-label">Weight:</label>
+                                        <input type="text" id="weight" name="weight" class="form-control" required>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="movement_speed" class="form-label">Movement Speed:</label>
+                                        <input type="text" id="movement_speed" name="movement_speed" class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="hit_dice" class="form-label">Hit Dice:</label>
+                                        <input type="text" id="hit_dice" name="hit_dice" class="form-control" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-        <!-- Health -->
-        <label for="vitality_points">Vitality Points Dice Roll Value (Full Roll Value):</label>
-        <input type="number" id="vitality_points" name="vitality_points" required><br>
-        <label for="wound_points">Wound Points:</label>
-        <input type="number" id="wound_points" name="wound_points" required><br>
+                <!-- Health Section -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <i class="fas fa-heart me-2"></i>Health
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="vitality_points" class="form-label">Vitality Points Dice Roll Value (Full Roll Value):</label>
+                                <input type="number" id="vitality_points" name="vitality_points" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="wound_points" class="form-label">Wound Points:</label>
+                                <input type="number" id="wound_points" name="wound_points" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-<div class="stats-row">
-        <button type="submit" class="button">Create Character</button>
+                <!-- Attributes Section -->
+                <div class="col-md-12 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-dice-d20 me-2"></i>Attributes
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="ST" class="form-label">Strength (ST):</label>
+                                        <input type="number" id="ST" name="ST" class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="DX" class="form-label">Dexterity (DX):</label>
+                                        <input type="number" id="DX" name="DX" class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="CN" class="form-label">Constitution (CN):</label>
+                                        <input type="number" id="CN" name="CN" class="form-control" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="CH" class="form-label">Charisma (CH):</label>
+                                        <input type="number" id="CH" name="CH" class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="IN" class="form-label">Intelligence (IN):</label>
+                                        <input type="number" id="IN" name="IN" class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="WP" class="form-label">Willpower (WP):</label>
+                                        <input type="number" id="WP" name="WP" class="form-control" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-character btn-lg">
+                    <i class="fas fa-arrow-right me-2"></i>Continue to Next Step
+                </button>
+            </div>
+        </form>
     </div>
 
-
-    </form>
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </html>

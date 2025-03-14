@@ -1261,7 +1261,9 @@
         <div class="card">
             <div class="card-header">
                 Inventory
-                        <a href="{{ url_for('add_item', name=character.name) }}" class="btn btn-danger btn-sm" style="float: right;">Add Item</a>
+                        <button type="button" class="btn btn-danger btn-sm" style="float: right;" data-bs-toggle="modal" data-bs-target="#addItemModal">
+                            <i class="fas fa-plus me-1"></i> Add Item
+                        </button>
             </div>
             <div class="card-body">
                 <table class="table table-character">
@@ -1638,6 +1640,163 @@ window.onclick = function(event) {
         </div>
     </div>
 </div>
+
+<!-- Add Item Modal -->
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addItemModalLabel">Add Item to Inventory</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="/character/{{ character.name }}/inventory/add_item" method="POST">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="item_name" class="form-label">Item Name:</label>
+                            <input type="text" id="item_name" name="item_name" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="units" class="form-label">Amount of Units:</label>
+                            <input type="number" id="units" name="units" min="1" class="form-control" value="1" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="weight_per_unit" class="form-label">Weight per Unit (lbs):</label>
+                            <input type="number" id="weight_per_unit" name="weight_per_unit" step="0.01" class="form-control" value="0.0" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="additional_info" class="form-label">Additional Information:</label>
+                        <input type="text" id="additional_info" name="additional_info" class="form-control">
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input type="checkbox" id="is_armor" name="is_armor" class="form-check-input" onchange="toggleArmorFields()">
+                                <label for="is_armor" class="form-check-label">Is it armor?</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input type="checkbox" id="is_shield" name="is_shield" class="form-check-input" onchange="toggleArmorFields()">
+                                <label for="is_shield" class="form-check-label">Is it a shield?</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input type="checkbox" id="is_weapon" name="is_weapon" class="form-check-input" onchange="toggleWeaponFields()">
+                                <label for="is_weapon" class="form-check-label">Is it a weapon?</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Armor Fields -->
+                    <div id="armor_fields" style="display: none;">
+                        <div class="card card-body mb-3 bg-light">
+                            <h6 class="card-title">Armor Properties</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="ac_value" class="form-label">AC Value:</label>
+                                    <input type="number" id="ac_value" name="ac_value" step="1" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check mt-4">
+                                        <input type="checkbox" id="dx_modifier" name="dx_modifier" class="form-check-input">
+                                        <label for="dx_modifier" class="form-check-label">Takes DX Modifier into Account</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <label for="modifiers" class="form-label">Modifiers:</label>
+                                    <input type="text" id="modifiers" name="modifiers" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="conditions" class="form-label">Conditions:</label>
+                                    <input type="text" id="conditions" name="conditions" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weapon Fields -->
+                    <div id="weapon_fields" style="display: none;">
+                        <div class="card card-body mb-3 bg-light">
+                            <h6 class="card-title">Weapon Properties</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="damage_dice" class="form-label">Damage Dice:</label>
+                                    <input type="text" id="damage_dice" name="damage_dice" class="form-control" placeholder="e.g. 1d6">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="stat_modifier" class="form-label">Stat that Applies:</label>
+                                    <select id="stat_modifier" name="stat_modifier" class="form-select">
+                                        <option value="None">None</option>
+                                        <option value="Strength">Strength</option>
+                                        <option value="Dexterity">Dexterity</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <label for="weapon_modifiers" class="form-label">Modifiers:</label>
+                                    <input type="text" id="weapon_modifiers" name="weapon_modifiers" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="weapon_conditions" class="form-label">Conditions:</label>
+                                    <input type="text" id="weapon_conditions" name="weapon_conditions" class="form-control">
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="form-check">
+                                    <input type="checkbox" id="is_ranged" name="is_ranged" class="form-check-input" onchange="toggleRangeFields()">
+                                    <label for="is_ranged" class="form-check-label">Is it ranged?</label>
+                                </div>
+                                <div id="range_fields" style="display: none;" class="mt-2">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label for="normal_range" class="form-label">Normal Range:</label>
+                                            <input type="text" id="normal_range" name="normal_range" class="form-control">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="long_range" class="form-label">Long Range:</label>
+                                            <input type="text" id="long_range" name="long_range" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Item</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Add these functions to your existing script section or add a new script section
+function toggleArmorFields() {
+    var isArmor = document.getElementById('is_armor').checked;
+    document.getElementById('armor_fields').style.display = isArmor ? 'block' : 'none';
+}
+
+function toggleWeaponFields() {
+    var isWeapon = document.getElementById('is_weapon').checked;
+    document.getElementById('weapon_fields').style.display = isWeapon ? 'block' : 'none';
+}
+
+function toggleRangeFields() {
+    var isRanged = document.getElementById('is_ranged').checked;
+    document.getElementById('range_fields').style.display = isRanged ? 'block' : 'none';
+}
+</script>
 </body>
 </html>
 

@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, redirect, url_for, jsonify, session
-from flask_bootstrap import Bootstrap5
+from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
 # from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user
 from flask_sqlalchemy import SQLAlchemy
@@ -14,6 +14,7 @@ import math
 from datetime import datetime
 
 app = Flask(__name__)
+Bootstrap(app)
 DATA_FOLDER = 'characters'
 characters = {}
 if not os.path.exists(DATA_FOLDER):

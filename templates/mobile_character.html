@@ -1,5 +1,51 @@
 {% extends 'base.html' %}
 
+{% block title %}{{ character.name }}{% endblock %}
+
+{% block custom_css %}
+<style>
+    .collapsible {
+        margin-bottom: 1rem;
+    }
+    .collapsible-header {
+        background-color: #f8f9fa;
+        padding: 0.75rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+    }
+    .collapsible-content {
+        display: none;
+        padding: 1rem;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 0.25rem 0.25rem;
+    }
+    .contained-item {
+        background-color: rgba(0, 123, 255, 0.05);
+    }
+    .contained-item td {
+        padding-left: 2rem !important;
+    }
+    .coins {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    .coin {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-weight: bold;
+    }
+    .gold { background-color: #ffd700; }
+    .silver { background-color: #c0c0c0; }
+    .copper { background-color: #b87333; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="mobile-character-sheet {% if character.is_inspired %}inspired{% endif %}">
     <!-- Character Info -->
@@ -1180,160 +1226,4 @@ function toggleAbilityDescription(abilityId) {
     alert('{{ purse_error }}');
 {% endif %}
 </script>
-
-<style>
-.character-info {
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-.mobile-character-sheet.inspired {
-    background-color: #fff3cd;
-    min-height: 100vh;
-}
-
-.collapsible {
-    margin-bottom: 1rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.collapsible-header {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.collapsible-content {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease-out;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-    padding: 0.5rem;
-}
-
-.stat-card {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    padding: 0.5rem;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 60px;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    font-weight: bold;
-    color: #6c757d;
-    margin-bottom: 0.25rem;
-}
-
-.stat-modifier {
-    font-size: 1.5rem;
-    font-weight: bold;
-    line-height: 1;
-}
-
-.stat-modifier::before {
-    content: "+";
-    display: inline-block;
-}
-
-.stat-modifier:not([data-positive])::before {
-    content: "";
-}
-
-.stat-value {
-    font-size: 0.875rem;
-    color: #6c757d;
-    margin-top: 0.25rem;
-}
-
-.trait-item {
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    margin-bottom: 0.25rem;
-    overflow: hidden;
-}
-
-.trait-header {
-    background-color: #f8f9fa;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.trait-name {
-    color: #495057;
-    font-size: 0.9rem;
-}
-
-.trait-description {
-    padding: 0.5rem;
-    background-color: #fff;
-    border-top: 1px solid #dee2e6;
-    font-size: 0.9rem;
-}
-
-.ability-item {
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-    overflow: hidden;
-}
-
-.ability-header {
-    background-color: #f8f9fa;
-    padding: 0.75rem;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.ability-name {
-    font-weight: bold;
-}
-
-.ability-uses {
-    font-size: 0.875rem;
-    color: #6c757d;
-    margin: 0 0.5rem;
-}
-
-.ability-description {
-    padding: 0.75rem;
-    background-color: #fff;
-    border-top: 1px solid #dee2e6;
-}
-
-.ability-actions {
-    margin-top: 0.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.contained-item {
-    background-color: rgba(0, 123, 255, 0.05);
-}
-
-.contained-item td {
-    border-top: none;
-    padding-top: 0.25rem;
-    padding-bottom: 0.25rem;
-}
-</style>
 {% endblock %} 

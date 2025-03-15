@@ -169,7 +169,7 @@
     <!-- Equipment Section -->
     <div class="collapsible">
         <div class="collapsible-header">
-            <span>Equipment ({{ character.weapon.name if character.weapon.name else 'Unarmed' }} | Hit: {{ character.weapon_hit_chances|int if character.weapon_hit_chances|int < 0 else '+' + character.weapon_hit_chances|string }} | Dmg: {{ character.weapon_total_damage_modifier|int if character.weapon_total_damage_modifier|int < 0 else '+' + character.weapon_total_damage_modifier|string }})</span>
+            <span>Equipment ({{ character.weapon.name if character.weapon.name else 'Unarmed' }} | {{ character.weapon.damage_dice if character.weapon.damage_dice else 'd4' }} | Hit: {{ character.weapon_hit_chances|int if character.weapon_hit_chances|int < 0 else '+' + character.weapon_hit_chances|string }} | Dmg: {{ character.weapon_total_damage_modifier|int if character.weapon_total_damage_modifier|int < 0 else '+' + character.weapon_total_damage_modifier|string }})</span>
             <i class="fas fa-chevron-down"></i>
         </div>
         <div class="collapsible-content">

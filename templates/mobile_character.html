@@ -439,7 +439,7 @@
     <!-- Inventory Section -->
     <div class="collapsible">
         <div class="collapsible-header">
-            <span>Inventory</span>
+            <span>Inventory ({{ character.total_inventory_weight|round(1) if character.total_inventory_weight is defined else 0 }} lbs)</span>
             <i class="fas fa-chevron-down"></i>
         </div>
         <div class="collapsible-content">
@@ -466,16 +466,40 @@
                         <tr>
                             <th>Item</th>
                             <th>Units</th>
+                            <th>Weight</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in character.inventory %}
                         <tr>
-                            <td>{{ item.item_name }}</td>
+                            <td>
+                                {% if item.is_container %}
+                                <div class="d-flex align-items-center">
+                                    <button type="button" class="btn btn-link btn-sm p-0 me-2" 
+                                            onclick="toggleContainerContents('{{ item.item_name|replace("'", "\\'") }}')"
+                                            id="container-toggle-{{ item.item_name|replace(' ', '-') }}">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                {% endif %}
+                                {{ item.item_name }}
+                                {% if item.is_container and item.contained_items %}
+                                    <span class="badge bg-info rounded-pill ms-2">{{ item.contained_items|length }}</span>
+                                {% endif %}
+                                {% if item.is_container %}
+                                </div>
+                                {% endif %}
+                            </td>
                             <td>{{ item.units }}</td>
+                            <td>{% if item.total_weight is defined %}{{ item.total_weight|round(1) }} lbs{% else %}0 lbs{% endif %}</td>
                             <td>
                                 <div class="btn-group btn-group-sm">
+                                    {% if not item.is_container %}
+                                    <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#moveToContainerModal" 
+                                            onclick="prepareItemMove('{{ item.item_name }}')">
+                                        <i class="fas fa-arrow-right"></i>
+                                    </button>
+                                    {% endif %}
                                     <form action="{{ url_for('store_item', name=character.name) }}" method="POST" class="d-inline">
                                         <input type="hidden" name="item_name" value="{{ item.item_name }}">
                                         <button type="submit" class="btn btn-warning btn-sm">
@@ -491,15 +515,128 @@
                                 </div>
                             </td>
                         </tr>
+                        
+                        {% if item.is_container and item.contained_items %}
+                        <tr id="container-contents-{{ item.item_name|replace(' ', '-') }}" class="container-contents" style="display: none;">
+                            <td colspan="4" class="p-0">
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        {% for contained_item in item.contained_items %}
+                                        <tr class="contained-item">
+                                            <td class="ps-4">
+                                                <i class="fas fa-level-up-alt fa-rotate-90 me-2 text-muted"></i>
+                                                {{ contained_item.item_name }}
+                                            </td>
+                                            <td>{{ contained_item.units }}</td>
+                                            <td>{% if contained_item.total_weight is defined %}{{ contained_item.total_weight|round(1) }} lbs{% else %}0 lbs{% endif %}</td>
+                                            <td>
+                                                <form action="{{ url_for('move_from_container', name=character.name) }}" method="POST" class="d-inline">
+                                                    <input type="hidden" name="item_name" value="{{ contained_item.item_name }}">
+                                                    <input type="hidden" name="container_name" value="{{ item.item_name }}">
+                                                    <button type="submit" class="btn btn-primary btn-sm">
+                                                        <i class="fas fa-arrow-up"></i> Move Out
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                        {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-            <a href="{{ url_for('add_item', name=character.name) }}" class="btn btn-success btn-sm w-100">
+            <button type="button" class="btn btn-success btn-sm w-100" data-bs-toggle="modal" data-bs-target="#addItemModal">
                 <i class="fas fa-plus"></i> Add Item
-            </a>
+            </button>
         </div>
     </div>
+
+    <!-- On the Ground Section (only shown if items exist) -->
+    {% if character.on_the_ground and character.on_the_ground|length > 0 %}
+    <div class="collapsible">
+        <div class="collapsible-header">
+            <span>On the Ground ({{ character.on_the_ground|length }} items)</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="collapsible-content">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Units</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in character.on_the_ground %}
+                        <tr>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.units }}</td>
+                            <td>
+                                <form action="{{ url_for('pickup_item', name=character.name) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="item_name" value="{{ item.item_name }}">
+                                    <button type="submit" class="btn btn-success btn-sm">
+                                        <i class="fas fa-hand-paper"></i> Pick Up
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <form action="{{ url_for('reset_on_the_ground', name=character.name) }}" method="POST">
+                <button type="submit" class="btn btn-danger btn-sm w-100 mt-2">
+                    <i class="fas fa-trash"></i> Clear All Items on Ground
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- At Home Section (only shown if items exist) -->
+    {% if character.house_inventory and character.house_inventory|length > 0 %}
+    <div class="collapsible">
+        <div class="collapsible-header">
+            <span>At Home ({{ character.house_inventory|length }} items)</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="collapsible-content">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Units</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in character.house_inventory %}
+                        <tr>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.units }}</td>
+                            <td>
+                                <form action="{{ url_for('pickup_item', name=character.name) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="item_name" value="{{ item.item_name }}">
+                                    <button type="submit" class="btn btn-success btn-sm">
+                                        <i class="fas fa-hand-paper"></i> Pick Up
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Notes Section -->
     <div class="collapsible">
@@ -618,12 +755,244 @@
     </div>
 </div>
 
+<!-- Add Item Modal -->
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addItemModalLabel">Add Item to Inventory</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addItemForm" action="{{ url_for('add_item_post', name=character.name) }}" method="POST">
+                    <input type="hidden" name="view" value="mobile">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="item_name" class="form-label">Item Name:</label>
+                                <input type="text" id="item_name" name="item_name" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="units" class="form-label">Units:</label>
+                                <input type="number" id="units" name="units" class="form-control" value="1" min="1" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="weight_per_unit" class="form-label">Weight per Unit (lbs):</label>
+                                <input type="number" id="weight_per_unit" name="weight_per_unit" class="form-control" step="0.1" value="0" min="0" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="additional_info" class="form-label">Additional Information:</label>
+                        <textarea id="additional_info" name="additional_info" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-4">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input item-type-checkbox" type="checkbox" id="is_armor" name="is_armor">
+                                <label class="form-check-label" for="is_armor">This is Armor</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input item-type-checkbox" type="checkbox" id="is_weapon" name="is_weapon">
+                                <label class="form-check-label" for="is_weapon">This is a Weapon</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input item-type-checkbox" type="checkbox" id="is_container" name="is_container">
+                                <label class="form-check-label" for="is_container">This is a Container/Bag</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Container Properties -->
+                    <div id="containerProperties" class="item-properties" style="display:none;">
+                        <div class="card mt-3 mb-3">
+                            <div class="card-header bg-info text-white">
+                                Container Properties
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="container_capacity" class="form-label">Capacity (lbs):</label>
+                                            <input type="number" id="container_capacity" name="container_capacity" class="form-control" min="0" step="0.1" value="20">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="weight_reduction" class="form-label">Weight Reduction (%):</label>
+                                            <input type="number" id="weight_reduction" name="weight_reduction" class="form-control" min="0" max="100" value="0">
+                                            <small class="form-text text-muted">Percentage by which this container reduces the weight of items inside it.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Armor Fields -->
+                    <div id="armorProperties" class="item-properties" style="display: none;">
+                        <div class="card mt-3 mb-3">
+                            <div class="card-header bg-primary text-white">
+                                Armor Properties
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="ac_value" class="form-label">AC Value:</label>
+                                            <input type="number" id="ac_value" name="ac_value" step="1" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check mt-4">
+                                            <input type="checkbox" id="dx_modifier" name="dx_modifier" class="form-check-input">
+                                            <label for="dx_modifier" class="form-check-label">Takes DX Modifier into Account</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="modifiers" class="form-label">Modifiers:</label>
+                                            <input type="text" id="modifiers" name="modifiers" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="conditions" class="form-label">Conditions:</label>
+                                            <input type="text" id="conditions" name="conditions" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weapon Fields -->
+                    <div id="weaponProperties" class="item-properties" style="display: none;">
+                        <div class="card mt-3 mb-3">
+                            <div class="card-header bg-danger text-white">
+                                Weapon Properties
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="damage_dice" class="form-label">Damage Dice:</label>
+                                            <input type="text" id="damage_dice" name="damage_dice" class="form-control" placeholder="e.g. 1d6">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="weapon_stat_modifier" class="form-label">Stat that Applies:</label>
+                                            <select id="weapon_stat_modifier" name="weapon_stat_modifier" class="form-select">
+                                                <option value="None">None</option>
+                                                <option value="Strength">Strength</option>
+                                                <option value="Dexterity">Dexterity</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="weapon_modifiers" class="form-label">Modifiers:</label>
+                                            <input type="text" id="weapon_modifiers" name="weapon_modifiers" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="weapon_conditions" class="form-label">Conditions:</label>
+                                            <input type="text" id="weapon_conditions" name="weapon_conditions" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input type="checkbox" id="is_ranged" name="is_ranged" class="form-check-input">
+                                    <label for="is_ranged" class="form-check-label">This is a ranged weapon</label>
+                                </div>
+                                <div id="rangedProperties" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="normal_range" class="form-label">Normal Range:</label>
+                                                <input type="text" id="normal_range" name="normal_range" class="form-control">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="long_range" class="form-label">Long Range:</label>
+                                                <input type="text" id="long_range" name="long_range" class="form-control">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addItemForm" class="btn btn-primary">Add Item</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Move to Container Modal -->
+<div class="modal fade" id="moveToContainerModal" tabindex="-1" aria-labelledby="moveToContainerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="moveToContainerModalLabel">Move Item to Container</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="moveToContainerForm" action="{{ url_for('move_to_container', name=character.name) }}" method="POST">
+                    <input type="hidden" id="move_item_name" name="item_name" value="">
+                    <div class="mb-3">
+                        <label for="container_select" class="form-label">Select Container:</label>
+                        <select id="container_select" name="container_name" class="form-select" required>
+                            <option value="" disabled selected>Choose a container...</option>
+                            {% for item in character.inventory %}
+                                {% if item.is_container %}
+                                <option value="{{ item.item_name }}">
+                                    {{ item.item_name }} 
+                                    ({% if item.contained_items %}{{ (item.contained_items|sum(attribute='total_weight'))|round(1) }}{% else %}0{% endif %}/{{ item.container_capacity }} lbs)
+                                </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Move Item</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const collapsibles = document.querySelectorAll('.collapsible-header');
     
     // Load saved states
     const savedStates = JSON.parse(localStorage.getItem('collapsibleStates') || '{}');
+    
+    // Function to prepare the item move modal
+    window.prepareItemMove = function(itemName) {
+        document.getElementById('move_item_name').value = itemName;
+    };
     
     collapsibles.forEach((header, index) => {
         const content = header.nextElementSibling;
@@ -655,6 +1024,75 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem('collapsibleStates', JSON.stringify(savedStates));
         });
     });
+    
+    // Add Item Modal functionality
+    // Helper function to toggle property sections
+    function togglePropertySections() {
+        // Container properties
+        const containerCheckbox = document.getElementById('is_container');
+        const containerProperties = document.getElementById('containerProperties');
+        if (containerCheckbox && containerProperties) {
+            containerProperties.style.display = containerCheckbox.checked ? 'block' : 'none';
+        }
+        
+        // Armor properties
+        const armorCheckbox = document.getElementById('is_armor');
+        const armorProperties = document.getElementById('armorProperties');
+        if (armorCheckbox && armorProperties) {
+            armorProperties.style.display = armorCheckbox.checked ? 'block' : 'none';
+        }
+        
+        // Weapon properties
+        const weaponCheckbox = document.getElementById('is_weapon');
+        const weaponProperties = document.getElementById('weaponProperties');
+        if (weaponCheckbox && weaponProperties) {
+            weaponProperties.style.display = weaponCheckbox.checked ? 'block' : 'none';
+        }
+    }
+    
+    // Initial setup
+    togglePropertySections();
+    
+    // Handle item type checkbox changes
+    const itemTypeCheckboxes = document.querySelectorAll('.item-type-checkbox');
+    itemTypeCheckboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            // If this checkbox is checked, uncheck others
+            if (this.checked) {
+                itemTypeCheckboxes.forEach(function(cb) {
+                    if (cb !== checkbox) {
+                        cb.checked = false;
+                    }
+                });
+            }
+            togglePropertySections();
+        });
+    });
+    
+    // Additional scripts for ranged weapons
+    const isRangedCheckbox = document.getElementById('is_ranged');
+    const rangedProperties = document.getElementById('rangedProperties');
+    
+    if (isRangedCheckbox && rangedProperties) {
+        isRangedCheckbox.addEventListener('change', function() {
+            rangedProperties.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+
+    // Container contents toggle functionality
+    window.toggleContainerContents = function(containerName) {
+        const contentsRow = document.getElementById(`container-contents-${containerName.replace(' ', '-')}`);
+        const toggleButton = document.getElementById(`container-toggle-${containerName.replace(' ', '-')}`);
+        const icon = toggleButton.querySelector('i');
+        
+        if (contentsRow.style.display === 'none') {
+            contentsRow.style.display = 'table-row';
+            icon.classList.replace('fa-chevron-right', 'fa-chevron-down');
+        } else {
+            contentsRow.style.display = 'none';
+            icon.classList.replace('fa-chevron-down', 'fa-chevron-right');
+        }
+    };
 });
 
 function editNote(noteId, content) {
@@ -886,6 +1324,16 @@ function toggleAbilityDescription(abilityId) {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.contained-item {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.contained-item td {
+    border-top: none;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
 }
 </style>
 {% endblock %} 

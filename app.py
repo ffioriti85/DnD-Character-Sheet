@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for, jsonify, session
+from flask import Flask, request, render_template, redirect, url_for, jsonify, session, flash
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
 # from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user
@@ -175,13 +175,13 @@ def load_character(name):
         return character_data
     return None
 
-@app.route('/delete_character/<name>', methods=['GET', 'POST'])
+@app.route('/delete_character/<name>', methods=['POST'])
 def delete_character(name):
     filename = os.path.join(DATA_FOLDER, f"{name}.json")
     if os.path.exists(filename):
         os.remove(filename)
+    return redirect(url_for('index'))
 
-    return redirect(url_for('index'))  # Calls the `index` function
 def get_character_list():
     """Retrieve a list of character names from the JSON files in DATA_FOLDER."""
     if not os.path.exists(DATA_FOLDER):
@@ -478,6 +478,16 @@ def view_character(name):
             'modifier': 0
         }
 
+    # Calculate total inventory weight properly accounting for container effective weights
+    total_inventory_weight = 0
+    for item in character['inventory']:
+        if item.get('is_container', False) and 'effective_weight' in item:
+            total_inventory_weight += item['effective_weight']
+        else:
+            total_inventory_weight += item.get('total_weight', 0)
+    
+    character['total_inventory_weight'] = total_inventory_weight
+    
     # Choose template based on view mode from session
     template = 'mobile_character.html' if current_view_mode == 'mobile' else 'view_character.html'
     return render_template(template, character=character, armor_items=armor_items, weapon_items=weapon_items, purse_error=purse_error, view_mode=current_view_mode)
@@ -500,104 +510,70 @@ def calculate_injury_fatigue(active_wound, max_wound):
         return 0  # Default case if none of the conditions are met
 
 
-def calculate_encumbrance_level_OLDER(name, character_ST):
-    character = load_character(name)
-    if character:
-        if len(character['inventory']) == 0:
-            total_inventory_weight = 0
+def calculate_encumbrance_level(character):
+    """
+    Calculate the encumbrance level of a character based on their inventory weight,
+    taking into account any containers with weight reduction.
+    """
+    if not character or not character.get('inventory'):
+        return 0  # No encumbrance if no inventory
+    
+    # Get character attributes
+    character_ST = int(character.get('ST', 10))  # Default to 10 if not found
+    height = float(character.get('height', 5.5))  # Default to 5.5 if not found
+    
+    # Calculate total inventory weight with container weight reduction
+    total_inventory_weight = 0
+    
+    for item in character['inventory']:
+        if item.get('is_container', False) and item.get('contained_items'):
+            # Calculate container's own weight
+            container_weight = item.get('total_weight', 0)
+            
+            # Calculate weight of contained items with reduction
+            contained_weight = sum(contained.get('total_weight', 0) for contained in item.get('contained_items', []))
+            if item.get('weight_reduction', 0) > 0:
+                contained_weight = contained_weight * (1 - item.get('weight_reduction', 0) / 100)
+            
+            # Add container weight plus reduced contained weight
+            total_inventory_weight += container_weight + contained_weight
         else:
-            total_inventory_weight = sum(item['total_weight'] for item in character['inventory'])
-
-        height = float(character['height'])
-        if 2 <= height < 4:
-            # return "Small"
-            if total_inventory_weight < character_ST * 2 / 3:
-                encumbrance = 0
-            elif total_inventory_weight < character_ST * 1.5:
-                encumbrance = 1
-            elif total_inventory_weight < character_ST * 3:
-                encumbrance = 2
-            elif total_inventory_weight < character_ST * 5:
-                encumbrance = 3
-            elif total_inventory_weight < character_ST * 7:
-                encumbrance = 4
-            else:
-                encumbrance = 5
-        elif 4 <= height < 8:
-            # return "Medium"
-            if total_inventory_weight < character_ST:
-                encumbrance = 0
-            elif total_inventory_weight < character_ST * 2.5:
-                encumbrance = 1
-            elif total_inventory_weight < character_ST * 5:
-                encumbrance = 2
-            elif total_inventory_weight < character_ST * 7.5:
-                encumbrance = 3
-            elif total_inventory_weight < character_ST * 11:
-                encumbrance = 4
-            else:
-                encumbrance = 5
-        elif 8 <= height < 16:
-            # "Large"
-            if total_inventory_weight < character_ST * 1.5:
-                encumbrance = 0
-            elif total_inventory_weight < character_ST * 3:
-                encumbrance = 1
-            elif total_inventory_weight < character_ST * 6:
-                encumbrance = 2
-            elif total_inventory_weight < character_ST * 10:
-                encumbrance = 3
-            elif total_inventory_weight < character_ST * 14:
-                encumbrance = 4
-            else:
-                encumbrance = 5
-
-        return encumbrance
-    return "Character not found", 404
-
-def calculate_encumbrance_level(name, character_ST):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-
-    # Calculate total inventory weight
-    total_inventory_weight = sum(item['total_weight'] for item in character['inventory']) if character['inventory'] else 0
-
-    height = float(character['height'])
-    powerful_build = character['powerful_build']
-    # Define size categories and corresponding encumbrance multipliers
-    size_thresholds = {
-        (2, 4): [2 / 3, 1.5, 3, 5, 7],  # Small
-        (4, 8): [1, 2.5, 5, 7.5, 11],  # Medium
-        (8, 16): [1.5, 3, 6, 10, 14]  # Large
-    }
-
-    # Find the appropriate size category
-    applicable_size = None
-    for (min_height, max_height), thresholds in size_thresholds.items():
-        if min_height <= height < max_height:
-            applicable_size = (min_height, max_height)
-            break
-
-    if applicable_size is None:
-        return "Invalid height", 400  # Return error if height is out of range
-
-    # If Powerful Build is active, shift to the next larger size if possible
-    if powerful_build:
-        size_keys = list(size_thresholds.keys())
-        current_index = size_keys.index(applicable_size)
-        if current_index + 1 < len(size_keys):  # Ensure it's not already at the max size
-            applicable_size = size_keys[current_index + 1]
-
-    # Get the thresholds for the final applicable size
-    thresholds = size_thresholds[applicable_size]
-
-    # Determine encumbrance level based on weight thresholds
-    for level, multiplier in enumerate(thresholds):
-        if total_inventory_weight < character_ST * multiplier:
-            return level
-
-    return 5  # Max encumbrance if all thresholds are exceeded
+            # Regular item, just add its weight
+            total_inventory_weight += item.get('total_weight', 0)
+    
+    # Determine encumbrance level based on height and ST
+    if 2 <= height < 4:  # Small creatures
+        if total_inventory_weight < character_ST * 2 / 3:
+            encumbrance = 0  # Unencumbered
+        elif total_inventory_weight < character_ST * 1.5:
+            encumbrance = 1  # Lightly encumbered
+        elif total_inventory_weight < character_ST * 3:
+            encumbrance = 2  # Encumbered
+        elif total_inventory_weight < character_ST * 5:
+            encumbrance = 3  # Heavily encumbered
+        elif total_inventory_weight < character_ST * 7:
+            encumbrance = 4  # Severely encumbered
+        else:
+            encumbrance = 5  # Immobilized
+    else:  # Medium or larger creatures
+        if total_inventory_weight < character_ST:
+            encumbrance = 0  # Unencumbered
+        elif total_inventory_weight < character_ST * 2.5:
+            encumbrance = 1  # Lightly encumbered
+        elif total_inventory_weight < character_ST * 5:
+            encumbrance = 2  # Encumbered
+        elif total_inventory_weight < character_ST * 7.5:
+            encumbrance = 3  # Heavily encumbered
+        elif total_inventory_weight < character_ST * 11:
+            encumbrance = 4  # Severely encumbered
+        else:
+            encumbrance = 5  # Immobilized
+    
+    # Store the calculated values in the character for reference
+    character['total_inventory_weight'] = total_inventory_weight
+    character['encumbrance_level'] = encumbrance
+    
+    return encumbrance
 
 def calculate_encumbrance_penalty(encumbrance):
     encumbrance_penalties = {
@@ -798,8 +774,14 @@ def update_character(name):
         vp_modifier = character['active_wound_points']
     else:
         vp_modifier = character['active_CN']
+        
+    # Update effective weights for all containers in inventory
+    for item in character['inventory']:
+        if item.get('is_container', False):
+            update_container_effective_weight(item)
+            
     # Calculate the rest of the stats
-    character['encumbrance'] = calculate_encumbrance_level(name, character['active_ST'])
+    character['encumbrance'] = calculate_encumbrance_level(character)
     character['active_movement_speed'] = update_movement_speed(base_movement_speed, injury_fatigue_movement_debuff,
                                                                int(calculate_encumbrance_penalty(
                                                                    character['encumbrance']))) + character[
@@ -807,7 +789,17 @@ def update_character(name):
     character['encumbrance_penalty_explained'] = explain_encumbrance_penalty(character['encumbrance'])
     character['active_movement_debuffs'] = injury_fatigue_movement_debuff_text
     character['injury_fatigue_debuffs'] = injury_fatigue_extra_effects
-    character['total_inventory_weight'] = sum(item['total_weight'] for item in character['inventory'])
+    
+    # Calculate total inventory weight properly accounting for container effective weights
+    total_inventory_weight = 0
+    for item in character['inventory']:
+        if item.get('is_container', False) and 'effective_weight' in item:
+            total_inventory_weight += item['effective_weight']
+        else:
+            total_inventory_weight += item.get('total_weight', 0)
+    
+    character['total_inventory_weight'] = total_inventory_weight
+    
     # Caculate Vitality Points and Max Vitality Points
     character['max_vitality_points'] = calculate_vitality_points(character['vitality_points_dice_rolls'],
                                                                  character['level'], vp_modifier) + character[
@@ -850,6 +842,7 @@ def add_item_post(name):
         # Calculate total weight
         total_weight = units * weight_per_unit
         is_armor = request.form.get('is_armor') == 'on'
+        is_container = request.form.get('is_container') == 'on'
 
         ac_value = request.form.get('ac_value') if is_armor else None
         dx_modifier = request.form.get('dx_modifier') == 'on' if is_armor else None
@@ -867,6 +860,11 @@ def add_item_post(name):
         weapon_normal_range = request.form.get('normal_range') if (is_weapon and weapon_is_ranged) else None
         weapon_long_range = request.form.get('long_range') if (is_weapon and weapon_is_ranged) else None
 
+        # Container specific properties
+        container_capacity = float(request.form.get('container_capacity', 0)) if is_container else None
+        weight_reduction = float(request.form.get('weight_reduction', 0)) if is_container else None
+        contained_items = [] if is_container else None
+
         # Create a dictionary for the item and add it to the character's inventory
         item = {
             'item_name': item_name,
@@ -880,18 +878,32 @@ def add_item_post(name):
             'modifiers': modifiers,
             'conditions': conditions,
             'is_weapon' : is_weapon,
-            'damage_dice':damage_dice,
-            'weapon_modifiers':weapon_modifiers,
-            'weapon_stat_modifier':weapon_stat_modifier,
-            'weapon_conditions':weapon_conditions,
-            'weapon_is_ranged':weapon_is_ranged,
-            'weapon_normal_range':weapon_normal_range,
-            'weapon_long_range':weapon_long_range
+            'damage_dice': damage_dice,
+            'weapon_modifiers': weapon_modifiers,
+            'weapon_stat_modifier': weapon_stat_modifier,
+            'weapon_conditions': weapon_conditions,
+            'weapon_is_ranged': weapon_is_ranged,
+            'weapon_normal_range': weapon_normal_range,
+            'weapon_long_range': weapon_long_range,
+            'is_container': is_container,
+            'container_capacity': container_capacity,
+            'weight_reduction': weight_reduction,
+            'contained_items': contained_items
         }
+        
+        # If it's a container, initialize the effective weight
+        if is_container:
+            item['effective_weight'] = total_weight  # Initially just the container weight
+            item['raw_contained_weight'] = 0
+            item['reduced_contained_weight'] = 0
+            
         character['inventory'].append(item)
         save_character(character)
         update_character(character['name'])
-        return redirect(url_for('view_character', name=name))
+        
+        # Get the view mode parameter from the form if it exists
+        view_mode = request.form.get('view', 'desktop')
+        return redirect(url_for('view_character', name=name, view=view_mode))
 
     else:
         return "Character not found", 404
@@ -951,7 +963,7 @@ def store_item(name):
     return "Character not found", 404
 
 
-@app.route('/character/<name>/inventory/pick_up', methods=['POST'])
+@app.route('/character/<name>/inventory/pickup', methods=['POST'])
 def pickup_item(name):
     character = load_character(name)
     if character:
@@ -1110,9 +1122,13 @@ def equip_weapon(name):
     return redirect(url_for('view_character', name=name))
 
 def calculate_hit_chances(character):
-    if character['weapon']['weapon_stat_modifier'] =='Strength':
+    # Initialize weapon_stat_modifier with a default value of 0
+    weapon_stat_modifier = 0
+    
+    # Only set weapon_stat_modifier if it has a valid value
+    if character['weapon']['weapon_stat_modifier'] == 'Strength':
         weapon_stat_modifier = int(character['ST_modifier'])
-    elif character['weapon']['weapon_stat_modifier'] =='Dexterity':
+    elif character['weapon']['weapon_stat_modifier'] == 'Dexterity':
         weapon_stat_modifier = int(character['DX_modifier'])
 
     if character.get('weapon', {}).get("weapon_proficiency", "None") != 'None':
@@ -1120,20 +1136,26 @@ def calculate_hit_chances(character):
     else:
         total_value = 0
     total_modifier = calculate_total_weapon_damage_modifier(character)
-    total_increased_hit_chance = total_modifier+int(total_value)
+    total_increased_hit_chance = total_modifier + int(total_value)
     return(total_increased_hit_chance)
 
 def calculate_total_weapon_damage_modifier(character):
-    if character['weapon']['weapon_stat_modifier'] =='Strength':
+    # Initialize weapon_stat_modifier with a default value of 0
+    weapon_stat_modifier = 0
+    
+    # Only set weapon_stat_modifier if it has a valid value
+    if character['weapon']['weapon_stat_modifier'] == 'Strength':
         weapon_stat_modifier = int(character['ST_modifier'])
-    elif character['weapon']['weapon_stat_modifier'] =='Dexterity':
+    elif character['weapon']['weapon_stat_modifier'] == 'Dexterity':
         weapon_stat_modifier = int(character['DX_modifier'])
-    if character['weapon']['weapon_modifiers'] !="":
+    
+    # Get weapon modifiers
+    if character['weapon']['weapon_modifiers'] != "":
         weapon_modifiers = int(character['weapon']['weapon_modifiers'])
     else:
         weapon_modifiers = 0
 
-    total_increased_hit_chance = weapon_modifiers+ weapon_stat_modifier
+    total_increased_hit_chance = weapon_modifiers + weapon_stat_modifier
     return(int(total_increased_hit_chance))
 
 @app.route('/character/<name>/update_temporary_armor_modifier', methods=['POST'])
@@ -1914,6 +1936,111 @@ def delete_note(name, note_id):
     # Redirect back to character sheet
     return redirect(url_for("view_character", name=name))
 
+
+# Function to calculate container's effective weight
+def update_container_effective_weight(container):
+    """Calculate and update a container's effective weight including its contained items with reduction."""
+    if not container or not container.get('is_container'):
+        return
+    
+    # Container's own weight
+    container_weight = container.get('total_weight', 0)
+    
+    # Calculate weight of contained items with reduction
+    contained_weight = sum(contained.get('total_weight', 0) for contained in container.get('contained_items', []))
+    if container.get('weight_reduction', 0) > 0:
+        reduced_contained_weight = contained_weight * (1 - container.get('weight_reduction', 0) / 100)
+    else:
+        reduced_contained_weight = contained_weight
+    
+    # Set effective weight property
+    container['effective_weight'] = container_weight + reduced_contained_weight
+    container['raw_contained_weight'] = contained_weight
+    container['reduced_contained_weight'] = reduced_contained_weight
+    
+    return container
+
+# Route to put an item into a container
+@app.route('/character/<name>/inventory/move_to_container', methods=['POST'])
+def move_to_container(name):
+    character = load_character(name)
+    if character:
+        item_name = request.form['item_name']
+        container_name = request.form['container_name']
+        
+        # Find the item and container in inventory
+        item = next((item for item in character.get('inventory', []) 
+                    if item['item_name'] == item_name and not item.get('is_container', False)), None)
+        container = next((container for container in character.get('inventory', []) 
+                        if container['item_name'] == container_name and container.get('is_container', False)), None)
+        
+        if item and container:
+            # Check if container has capacity
+            current_container_weight = sum(contained_item.get('total_weight', 0) for contained_item in container.get('contained_items', []))
+            if current_container_weight + item['total_weight'] <= container.get('container_capacity', 0):
+                # Remove item from inventory
+                character['inventory'] = [i for i in character['inventory'] if i['item_name'] != item_name]
+                
+                # Add item to container
+                if 'contained_items' not in container:
+                    container['contained_items'] = []
+                container['contained_items'].append(item)
+                
+                # Update container's effective weight
+                update_container_effective_weight(container)
+                
+                # Update character
+                save_character(character)
+                update_character(character['name'])
+                return redirect(url_for('view_character', name=name))
+            else:
+                flash(f"The {container_name} cannot hold any more weight!", "error")
+                return redirect(url_for('view_character', name=name))
+        else:
+            flash("Item or container not found!", "error")
+            return redirect(url_for('view_character', name=name))
+    else:
+        return "Character not found", 404
+
+
+# Route to take an item out of a container
+@app.route('/character/<name>/inventory/move_from_container', methods=['POST'])
+def move_from_container(name):
+    character = load_character(name)
+    if character:
+        item_name = request.form['item_name']
+        container_name = request.form['container_name']
+        
+        # Find the container in inventory
+        container = next((container for container in character.get('inventory', []) 
+                        if container['item_name'] == container_name and container.get('is_container', False)), None)
+        
+        if container and 'contained_items' in container:
+            # Find the item in the container
+            item = next((item for item in container['contained_items'] if item['item_name'] == item_name), None)
+            
+            if item:
+                # Remove item from container
+                container['contained_items'] = [i for i in container['contained_items'] if i['item_name'] != item_name]
+                
+                # Update container's effective weight
+                update_container_effective_weight(container)
+                
+                # Add item to inventory
+                character['inventory'].append(item)
+                
+                # Update character
+                save_character(character)
+                update_character(character['name'])
+                return redirect(url_for('view_character', name=name))
+            else:
+                flash(f"Item {item_name} not found in {container_name}!", "error")
+                return redirect(url_for('view_character', name=name))
+        else:
+            flash("Container not found or empty!", "error")
+            return redirect(url_for('view_character', name=name))
+    else:
+        return "Character not found", 404
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

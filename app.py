@@ -145,19 +145,41 @@ def save_character_active(character):
 
 
 def load_character(name):
+    """Load character data from file, ensuring we always get the latest version."""
     filename = os.path.join(DATA_FOLDER, f"{name}.json")
     if os.path.exists(filename):
+        # Always read fresh from file
         with open(filename, 'r') as file:
             character_data = json.load(file)
-
+            
         # Ensure inventory is a list of dictionaries
         if 'inventory' not in character_data:
             character_data['inventory'] = []
         elif isinstance(character_data['inventory'], list):
-            # Check if each item in the list is a dictionary
             character_data['inventory'] = [
                 item if isinstance(item, dict) else {} for item in character_data['inventory']
             ]
+
+        # Ensure vitality_points_dice_rolls is a list of strings
+        if 'vitality_points_dice_rolls' in character_data:
+            character_data['vitality_points_dice_rolls'] = [
+                str(roll) for roll in character_data['vitality_points_dice_rolls']
+            ]
+
+        # Calculate vitality points using the latest data
+        if 'level' in character_data and 'CN' in character_data:
+            total_debuff = (int(character_data.get('injury_fatigue', 0)) + 
+                          int(character_data.get('exhaustion', 0)) + 
+                          int(character_data.get('extra_injury_fatigue', 0)))
+            
+            # Use wound points for VP calculation if character has injury fatigue
+            vp_modifier = character_data['active_wound_points'] if total_debuff > 0 else character_data['CN']
+            
+            character_data['max_vitality_points'] = calculate_vitality_points(
+                character_data['vitality_points_dice_rolls'],
+                character_data['level'],
+                vp_modifier
+            ) + character_data.get('debuff_max_vp', 0)
 
         return character_data
     return None
@@ -201,13 +223,33 @@ def get_modifier(stat_value):
 
 def calculate_vitality_points(rolls, level, CN):
     total_vitality_points = 0
-
+    
+    print(f"Original rolls: {rolls}")
+    # Convert rolls to integers and calculate half rounded up
     for roll in rolls:
-        total_vitality_points += math.ceil(int(roll) / 2)
+        try:
+            # Convert string to int if it's a string
+            roll_value = int(str(roll).strip())  # Ensure we're working with a clean string
+            # Calculate half of the roll rounded up
+            half_roll = math.ceil(roll_value / 2)
+            total_vitality_points += half_roll
+            
+        except (ValueError, TypeError) as e:
+            print(f"Error processing roll: {roll}, error: {e}")
+            continue
 
-    level_modifier = level * get_modifier(CN)
-    total_vitality_points = total_vitality_points + level_modifier
-
+    # Calculate and add the level modifier
+    cn_modifier = get_modifier(CN)
+    level_bonus = level * cn_modifier
+    
+    # Add the level bonus to the total
+    total_vitality_points += level_bonus
+    
+    print(f"Half rolls sum: {total_vitality_points - level_bonus}")
+    print(f"Level: {level}, CN: {CN}, CN Modifier: {cn_modifier}")
+    print(f"Level bonus: {level_bonus}")
+    print(f"Total VP: {total_vitality_points}")
+    
     return total_vitality_points
 
 
@@ -320,6 +362,7 @@ def create_character(name):
             return "Invalid input: all stats must be integers.", 400
         total_vitality_points = calculate_vitality_points(character_data['vitality_points_dice_rolls'],
                                                           character_data['level'], character_data['CN'])
+        print(total_vitality_points)
         character_data['vitality_points'] = total_vitality_points
         character_data['active_vitality_points'] = total_vitality_points
         character_data['max_vitality_points'] = total_vitality_points
@@ -1751,24 +1794,39 @@ def confirm_level_up(name):
 
 @app.route('/short_rest/<name>', methods=['POST'])
 def short_rest(name):
-    print('Im short resting')
     character = load_character(name)
-
     if not character:
         return "Character not found", 404
+
+    # Get view mode from query parameter
+    view_mode = request.args.get('view', 'desktop')
+
     if character['active_vitality_points'] < character['max_vitality_points']:
         hit_dice_roll = request.form.get('hit_dice_roll')
-
-        # You can now process the hit dice roll (e.g., update character stats)
         if hit_dice_roll:
-            hit_dice_roll = int(hit_dice_roll)  # Convert to an integer
-        character['active_vitality_points'] += hit_dice_roll
-        if character['active_vitality_points'] > character['max_vitality_points']:
-            character['active_vitality_points'] = character['max_vitality_points']
-    reload_abilities_on_short_rest(character)
+            try:
+                # Convert to integer and calculate half rounded up
+                hit_dice_roll = int(hit_dice_roll)
+                healing = math.ceil(hit_dice_roll / 2)
+                
+                # Apply healing
+                character['active_vitality_points'] = min(
+                    character['active_vitality_points'] + healing,
+                    character['max_vitality_points']
+                )
+                
+                # Save changes
+                save_character(character)
+            except (ValueError, TypeError) as e:
+                print(f"Error processing hit dice roll: {e}")
+                return "Invalid hit dice roll value", 400
 
+    # Reload abilities that recharge on short rest
+    reload_abilities_on_short_rest(character)
     save_character(character)
-    return redirect(url_for("view_character", name=name))
+    
+    # Redirect back to the same view mode
+    return redirect(url_for("view_character", name=name, view=view_mode))
 
 
 @app.route('/long_rest/<name>', methods=['POST'])

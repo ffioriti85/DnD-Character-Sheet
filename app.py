@@ -205,6 +205,10 @@ def index():
     if request.method == 'POST':
         name = request.form['name']
 
+        # Check for GM secret word
+        if name == "AndyGM":
+            return redirect(url_for('gm_cheatsheet'))
+
         # Try to load the character, including the inventory
         character = load_character(name)
 
@@ -215,6 +219,26 @@ def index():
 
     return render_template('index.html', characters=characters)
 
+@app.route('/gm_cheatsheet')
+def gm_cheatsheet():
+    characters = get_character_list()
+    return render_template('gm_cheatsheet.html', characters=characters)
+
+@app.route('/api/character/<name>/stats')
+def character_stats(name):
+    character = load_character(name)
+    if not character:
+        return jsonify({"error": "Character not found"}), 404
+
+    return jsonify({
+        "active_vitality_points": character["active_vitality_points"],
+        "max_vitality_points": character["max_vitality_points"],
+        "active_wound_points": character["active_wound_points"],
+        "max_wound_points": character["max_wound_points"],
+        "injury_fatigue": character["injury_fatigue"],
+        "armor_class": character["total_ac"],
+        "movement_speed": character["active_movement_speed"]
+    })
 
 # Function to Calculate Modifiers
 def get_modifier(stat_value):
@@ -224,7 +248,7 @@ def get_modifier(stat_value):
 def calculate_vitality_points(rolls, level, CN):
     total_vitality_points = 0
     
-    print(f"Original rolls: {rolls}")
+    # print(f"Original rolls: {rolls}")
     # Convert rolls to integers and calculate half rounded up
     for roll in rolls:
         try:
@@ -235,7 +259,7 @@ def calculate_vitality_points(rolls, level, CN):
             total_vitality_points += half_roll
             
         except (ValueError, TypeError) as e:
-            print(f"Error processing roll: {roll}, error: {e}")
+            # print(f"Error processing roll: {roll}, error: {e}")
             continue
 
     # Calculate and add the level modifier
@@ -245,10 +269,10 @@ def calculate_vitality_points(rolls, level, CN):
     # Add the level bonus to the total
     total_vitality_points += level_bonus
     
-    print(f"Half rolls sum: {total_vitality_points - level_bonus}")
-    print(f"Level: {level}, CN: {CN}, CN Modifier: {cn_modifier}")
-    print(f"Level bonus: {level_bonus}")
-    print(f"Total VP: {total_vitality_points}")
+    # print(f"Half rolls sum: {total_vitality_points - level_bonus}")
+    # print(f"Level: {level}, CN: {CN}, CN Modifier: {cn_modifier}")
+    # print(f"Level bonus: {level_bonus}")
+    # print(f"Total VP: {total_vitality_points}")
     
     return total_vitality_points
 
@@ -362,7 +386,7 @@ def create_character(name):
             return "Invalid input: all stats must be integers.", 400
         total_vitality_points = calculate_vitality_points(character_data['vitality_points_dice_rolls'],
                                                           character_data['level'], character_data['CN'])
-        print(total_vitality_points)
+     
         character_data['vitality_points'] = total_vitality_points
         character_data['active_vitality_points'] = total_vitality_points
         character_data['max_vitality_points'] = total_vitality_points
@@ -997,7 +1021,7 @@ def pickup_item(name):
     character = load_character(name)
     if character:
         item_name = request.form['item_name']
-        print(f'Im picking up {item_name}')
+        # print(f'Im picking up {item_name}')
         # Check if item is in 'on_the_ground'
         item = next((item for item in character.get('on_the_ground', []) if item['item_name'] == item_name), None)
         if item:
@@ -1009,7 +1033,7 @@ def pickup_item(name):
             character['inventory'].append(item)
 
         # Check if item is in 'house_inventory'
-        print(f'Im picking up {item_name}')
+        # print(f'Im picking up {item_name}')
         item = next((item for item in character.get('house_inventory', []) if item['item_name'] == item_name), None)
         if item:
             # Remove the item from 'house_inventory' and add to inventory
@@ -1103,9 +1127,9 @@ def apply_weapon_proficiency(name):
     character = load_character(name)
     if not character:
         return "Character not found", 404
-    print(request.form)
+    # print(request.form)
     selected_skill = request.form.get("selected_weapon_proficiency")
-    print(selected_skill)
+    # print(selected_skill)
     if selected_skill == "NO_SELECTION":
         selected_skill = None
 
@@ -1419,7 +1443,7 @@ def remove_debuff(name, debuff_id):
     if not character:
         return "Character not found", 404
     remove_debuff_incall(character, debuff_id)
-    print(f'Im removing a DEBUFF called {debuff_id}')
+   
     # apply_debuffs(character)
     save_character(character)
     update_character(name)
@@ -1732,7 +1756,7 @@ def reload_abilities_on_short_rest(character):
     save_character(character)
 @app.route('/level_up/<name>', methods=['GET', 'POST'])
 def level_up(name):
-    print(name)
+   
     character = load_character(name)
     hit_dice_roll = request.form.get('hit_dice_roll')
     wp_increase = request.form.get('increase_wound_points')
@@ -1818,7 +1842,7 @@ def short_rest(name):
                 # Save changes
                 save_character(character)
             except (ValueError, TypeError) as e:
-                print(f"Error processing hit dice roll: {e}")
+             
                 return "Invalid hit dice roll value", 400
 
     # Reload abilities that recharge on short rest
@@ -1883,10 +1907,9 @@ def modify_proficiency_value(name, ability_id, change):
     character = load_character(name)
     if not character:
         return "Character not found", 404
-    print (f'I am increasing {ability_id}')
-    print (f"The current bonus is:{character['skills'][ability_id]['proficiency_bonus']}")
+    
     character['skills'][ability_id]['proficiency_bonus'] = int(character['skills'][ability_id]['proficiency_bonus']) + change
-    print (f"The NEW bonus is: {character['skills'][ability_id]['proficiency_bonus']}")
+    
     save_character(character)
 def modify_ability_dc(name, ability_id, change):
     character = load_character(name)

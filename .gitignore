@@ -32,4 +32,5 @@ instance/
 storage/*
 !storage/.gitkeep
 characters/*
-!characters/.gitkeep 
+!characters/.gitkeep
+!characters/*.json 

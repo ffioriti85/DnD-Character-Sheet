@@ -1046,6 +1046,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Initializing collapsible sections...');
     const collapsibles = document.querySelectorAll('.collapsible-header');
     
     // Load saved states
@@ -1097,7 +1098,6 @@ function editNote(noteId, content) {
     document.getElementById('note_content').value = content;
     document.getElementById('noteForm').action = "{{ url_for('edit_note', name=character.name) }}";
     document.querySelector('#noteForm button[type="submit"]').innerHTML = '<i class="fas fa-save"></i>';
-    document.getElementById('cancelEditBtn').style.display = 'inline-block';
 }
 
 function cancelEdit() {
@@ -1105,7 +1105,6 @@ function cancelEdit() {
     document.getElementById('note_content').value = '';
     document.getElementById('noteForm').action = "{{ url_for('add_note', name=character.name) }}";
     document.querySelector('#noteForm button[type="submit"]').innerHTML = '<i class="fas fa-plus"></i>';
-    document.getElementById('cancelEditBtn').style.display = 'none';
 }
 
 function handleShortRest() {

@@ -29,8 +29,8 @@ ENV/
 instance/
 *.spec
 *.bat
-storage/*
-!storage/.gitkeep
-characters/*
-!characters/.gitkeep
-!characters/*.json 
+storage/*.db
+storage/*.sqlite
+storage/*.sqlite3
+characters/*.tmp
+characters/*.bak 

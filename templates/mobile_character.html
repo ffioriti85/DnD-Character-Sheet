@@ -1056,24 +1056,33 @@ document.addEventListener('DOMContentLoaded', function() {
         const icon = header.querySelector('i');
         const sectionId = `section-${index}`;
         
+        // Initialize content height
+        content.style.maxHeight = '0';
+        
         // Apply saved state if it exists
         if (savedStates[sectionId]) {
             content.style.maxHeight = content.scrollHeight + "px";
-            icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
         }
         
-        header.addEventListener('click', function() {
+        header.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
             const content = this.nextElementSibling;
             const icon = this.querySelector('i');
             
             // Toggle the content
-            if (content.style.maxHeight) {
-                content.style.maxHeight = null;
-                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            if (content.style.maxHeight && content.style.maxHeight !== '0px') {
+                content.style.maxHeight = '0';
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
                 savedStates[sectionId] = false;
             } else {
                 content.style.maxHeight = content.scrollHeight + "px";
-                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
                 savedStates[sectionId] = true;
             }
             

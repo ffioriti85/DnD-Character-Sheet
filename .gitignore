@@ -25,4 +25,11 @@ ENV/
 .idea/
 .vscode/
 *.pyc
-.DS_Store 
+.DS_Store
+instance/
+*.spec
+*.bat
+storage/*
+!storage/.gitkeep
+characters/*
+!characters/.gitkeep 

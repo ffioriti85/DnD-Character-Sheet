@@ -67,7 +67,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in character.on_the_ground %}
+                    {% for item in ground_items %}
                         <tr>
                             <td>{{ item.units }}</td>
                             <td>{{ item.item_name }}</td>
@@ -103,7 +103,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in character.house_inventory %}
+                    {% for item in home_items %}
                         <tr>
                             <td>{{ item.units }}</td>
                             <td>{{ item.item_name }}</td>
@@ -120,6 +120,9 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <form action="{{ url_for('reset_home_storage', name=character.name) }}" method="POST">
+                <button type="submit" name="action" value="reset">Reset Home Storage</button>
+            </form>
         </div>
 
         <a href="{{ url_for('add_item', name=character.name) }}" class="button">Add Item</a>

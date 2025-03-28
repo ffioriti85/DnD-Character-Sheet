@@ -169,7 +169,7 @@
     <!-- Equipment Section -->
     <div class="collapsible">
         <div class="collapsible-header">
-            <span>Equipment ({{ character.weapon.name if character.weapon.name else 'Unarmed' }} | {{ character.weapon.damage_dice if character.weapon.damage_dice else 'd4' }} | Hit: {{ character.weapon_hit_chances|int if character.weapon_hit_chances|int < 0 else '+' + character.weapon_hit_chances|string }} | Dmg: {{ character.weapon_total_damage_modifier|int if character.weapon_total_damage_modifier|int < 0 else '+' + character.weapon_total_damage_modifier|string }})</span>
+            <span>Equipment ({{ character.weapon.name if character.weapon.name else 'Unarmed' }} | Hit: {{ character.weapon_hit_chances|int if character.weapon_hit_chances|int < 0 else '+' + character.weapon_hit_chances|string }} | Dmg: {{ character.weapon.damage_dice if character.weapon.damage_dice else '1' }} {{ character.weapon_total_damage_modifier|int if character.weapon_total_damage_modifier|int < 0 else '+' + character.weapon_total_damage_modifier|string }})</span>
             <i class="fas fa-chevron-down"></i>
         </div>
         <div class="collapsible-content">
@@ -579,7 +579,7 @@
             </div>
 
             <!-- Ground Items -->
-            {% if character.on_the_ground %}
+            {% if ground_items %}
             <div class="inventory-section mb-3">
                 <h6 class="inventory-header bg-warning text-dark p-2 mb-2 rounded">
                     On The Ground
@@ -594,7 +594,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for item in character.on_the_ground %}
+                            {% for item in ground_items %}
                             <tr>
                                 <td>{{ item.item_name }}</td>
                                 <td>{{ item.units }}</td>
@@ -624,7 +624,7 @@
             {% endif %}
 
             <!-- Home Storage -->
-            {% if character.house_inventory %}
+            {% if home_items %}
             <div class="inventory-section mb-3">
                 <h6 class="inventory-header bg-info text-white p-2 mb-2 rounded">
                     At Home
@@ -639,7 +639,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for item in character.house_inventory %}
+                            {% for item in home_items %}
                             <tr>
                                 <td>{{ item.item_name }}</td>
                                 <td>{{ item.units }}</td>
@@ -647,8 +647,8 @@
                                     <div class="btn-group btn-group-sm">
                                         <form action="{{ url_for('pickup_item', name=character.name) }}" method="POST" class="d-inline">
                                             <input type="hidden" name="item_name" value="{{ item.item_name }}">
-                                            <button type="submit" class="btn btn-primary btn-sm" title="Retrieve">
-                                                <i class="fas fa-shopping-bag"></i>
+                                            <button type="submit" class="btn btn-success btn-sm" title="Pick Up">
+                                                <i class="fas fa-hand-paper"></i>
                                             </button>
                                         </form>
                                     </div>
@@ -657,6 +657,13 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                </div>
+                <div class="mt-2">
+                    <form action="{{ url_for('reset_home_storage', name=character.name) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-danger btn-sm w-100">
+                            <i class="fas fa-trash"></i> Clear Home Storage
+                        </button>
+                    </form>
                 </div>
             </div>
             {% endif %}

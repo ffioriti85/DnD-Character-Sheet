@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for, jsonify, session, flash
+from flask import Flask, request, render_template, redirect, url_for, jsonify, session, flash, send_file, make_response
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
 from flask_sqlalchemy import SQLAlchemy
@@ -10,13 +10,172 @@ import json
 import uuid
 import math
 from datetime import datetime
+from functools import wraps
+import re
+import datetime
+import random
+import traceback
+import tempfile
+import hashlib
+import zipfile
+import shutil
+import logging
+import werkzeug
+import sys
+import io
+import importlib.metadata
+from distutils.version import StrictVersion
 
 app = Flask(__name__)
 Bootstrap(app)
 DATA_FOLDER = 'characters'
-characters = {}
+STORAGE_FOLDER = 'storage'
+
+# Create folders if they don't exist
 if not os.path.exists(DATA_FOLDER):
     os.makedirs(DATA_FOLDER)
+if not os.path.exists(STORAGE_FOLDER):
+    os.makedirs(STORAGE_FOLDER)
+
+# Ground storage functions
+def load_ground_items():
+    """
+    Load items from the global ground storage file.
+    
+    Returns:
+        list: A list of items on the ground or an empty list if the file doesn't exist.
+    """
+    ground_file = os.path.join(STORAGE_FOLDER, 'OnTheGround.json')
+    if os.path.exists(ground_file):
+        try:
+            with open(ground_file, 'r') as file:
+                return json.load(file)
+        except json.JSONDecodeError:
+            # If the file exists but has invalid JSON, return an empty list
+            return []
+    else:
+        # If the file doesn't exist, create it with an empty array
+        save_ground_items([])
+        return []
+
+def save_ground_items(ground_items):
+    """
+    Save items to the global ground storage file.
+    
+    Args:
+        ground_items (list): List of items to save to the ground storage.
+    """
+    ground_file = os.path.join(STORAGE_FOLDER, 'OnTheGround.json')
+    with open(ground_file, 'w') as file:
+        json.dump(ground_items, file)
+
+def drop_item_to_ground(item):
+    """
+    Add an item to the global ground storage.
+    
+    Args:
+        item (dict): The item to add to the ground.
+    """
+    ground_items = load_ground_items()
+    ground_items.append(item)
+    save_ground_items(ground_items)
+
+def pickup_item_from_ground(item_name):
+    """
+    Remove an item from the global ground storage.
+    
+    Args:
+        item_name (str): The name of the item to remove.
+    
+    Returns:
+        dict: The removed item or None if not found.
+    """
+    ground_items = load_ground_items()
+    item = next((item for item in ground_items if item['item_name'] == item_name), None)
+    
+    if item:
+        # Remove the item from ground items
+        ground_items = [i for i in ground_items if i['item_name'] != item_name]
+        save_ground_items(ground_items)
+        return item
+    
+    return None
+
+def reset_ground_items():
+    """
+    Clear all items from the ground.
+    """
+    save_ground_items([])
+
+# Home storage functions
+def load_home_items():
+    """
+    Load items from the global home storage file.
+    
+    Returns:
+        list: A list of items in home storage or an empty list if the file doesn't exist.
+    """
+    home_file = os.path.join(STORAGE_FOLDER, 'HomeStorage.json')
+    if os.path.exists(home_file):
+        try:
+            with open(home_file, 'r') as file:
+                return json.load(file)
+        except json.JSONDecodeError:
+            # If the file exists but has invalid JSON, return an empty list
+            return []
+    else:
+        # If the file doesn't exist, create it with an empty array
+        save_home_items([])
+        return []
+
+def save_home_items(home_items):
+    """
+    Save items to the global home storage file.
+    
+    Args:
+        home_items (list): List of items to save to the home storage.
+    """
+    home_file = os.path.join(STORAGE_FOLDER, 'HomeStorage.json')
+    with open(home_file, 'w') as file:
+        json.dump(home_items, file)
+
+def store_item_at_home(item):
+    """
+    Add an item to the global home storage.
+    
+    Args:
+        item (dict): The item to add to home storage.
+    """
+    home_items = load_home_items()
+    home_items.append(item)
+    save_home_items(home_items)
+
+def pickup_item_from_home(item_name):
+    """
+    Remove an item from the global home storage.
+    
+    Args:
+        item_name (str): The name of the item to remove.
+    
+    Returns:
+        dict: The removed item or None if not found.
+    """
+    home_items = load_home_items()
+    item = next((item for item in home_items if item['item_name'] == item_name), None)
+    
+    if item:
+        # Remove the item from home items
+        home_items = [i for i in home_items if i['item_name'] != item_name]
+        save_home_items(home_items)
+        return item
+    
+    return None
+
+def reset_home_items():
+    """
+    Clear all items from home storage.
+    """
+    save_home_items([])
 
 # Add secret key for sessions
 app.secret_key = 'your-secret-key-here'  # Replace with a secure secret key in production
@@ -24,13 +183,59 @@ app.secret_key = 'your-secret-key-here'  # Replace with a secure secret key in p
 # TODO:
 #   Add the items on the ground to be "global"?
 #
-
+def adjust_view_mode():
+    view_mode = request.args.get('view')
+    if view_mode:
+        # If view mode is explicitly set in URL, update session
+        session['view_mode'] = view_mode
+    elif 'view_mode' not in session:
+        # If no view mode in session, default to desktop
+        session['view_mode'] = 'mobile'
+    
+    # Return the current view mode from session
+    return session['view_mode']
 #
+# Wrappers
+def character_handler(f):
+    @wraps(f)
+    def decorated_function(name, *args, **kwargs):
+        # Load character
+        character = load_character(name)
+        if not character:
+            return "Character not found", 404
+         # Determine view mode
+        view_mode = adjust_view_mode()    
+        # Call the original function
+        result = f(name, character, *args, **kwargs)
+        
+        # If the function returns something specific, return that
+        # Otherwise, save the character and redirect
+        if result is not None:
+            return result
+            
+        # Default behavior: save and redirect
+        save_character(character)
+        update_character(name)
+        return redirect(url_for('view_character', name=name, view=view_mode))
+        
+    return decorated_function
+
+def load_character_wrapper(f):
+    @wraps(f)
+    def decorated_function(name, *args, **kwargs):
+        character = load_character(name)
+        if not character:
+            return "Character not found", 404
+        
+        # Add the character to kwargs so the wrapped function can access it
+        kwargs['character'] = character
+        return f(name, *args, **kwargs)
+    return decorated_function
+
 def save_character(character):
     filename = os.path.join(DATA_FOLDER, f"{character['name']}.json")
     with open(filename, 'w') as file:
         json.dump(character, file)
-
 
 def initialize_character(character):
     """Ensure all expected keys exist in the character dictionary, adding defaults if missing."""
@@ -137,12 +342,10 @@ def initialize_character(character):
 
     return character
 
-
 def save_character_active(character):
     filename = os.path.join(DATA_FOLDER, f"{character['name']}.json")
     with open(filename, 'w') as file:
         json.dump(character, file)
-
 
 def load_character(name):
     """Load character data from file, ensuring we always get the latest version."""
@@ -191,6 +394,7 @@ def delete_character(name):
         os.remove(filename)
 
     return redirect(url_for('index'))  # Calls the `index` function
+
 def get_character_list():
     """Retrieve a list of character names from the JSON files in DATA_FOLDER."""
     if not os.path.exists(DATA_FOLDER):
@@ -198,6 +402,7 @@ def get_character_list():
 
     # List only .json files and remove the extension
     return [f[:-5] for f in os.listdir(DATA_FOLDER) if f.endswith('.json')]
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     characters = get_character_list()
@@ -225,8 +430,8 @@ def gm_cheatsheet():
     return render_template('gm_cheatsheet.html', characters=characters)
 
 @app.route('/api/character/<name>/stats')
-def character_stats(name):
-    character = load_character(name)
+@load_character_wrapper
+def character_stats(name, character):
     if not character:
         return jsonify({"error": "Character not found"}), 404
 
@@ -239,11 +444,9 @@ def character_stats(name):
         "armor_class": character["total_ac"],
         "movement_speed": character["active_movement_speed"]
     })
-
 # Function to Calculate Modifiers
 def get_modifier(stat_value):
     return (stat_value - 10) // 2
-
 
 def calculate_vitality_points(rolls, level, CN):
     total_vitality_points = 0
@@ -275,7 +478,6 @@ def calculate_vitality_points(rolls, level, CN):
     # print(f"Total VP: {total_vitality_points}")
     
     return total_vitality_points
-
 
 @app.route('/create/<name>', methods=['GET', 'POST'])
 def create_character(name):
@@ -354,7 +556,7 @@ def create_character(name):
                 'debuffs': [],
                 'weapon' : {
                 'name': 'Unarmed',
-                'damage_dice': 'd4',
+                'damage_dice': '1',
                 'weapon_stat_modifier': 'Strength',
                 'weapon_modifiers': 0,
                 'weapon_proficiency':None
@@ -400,15 +602,12 @@ def create_character(name):
     return render_template('create_character.html', name=name)
 
 @app.route('/finish_creation/<name>', methods=['GET', 'POST'])
-def finish_creation(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-
-
+@load_character_wrapper
+def finish_creation(name, character):
     save_character(character)
     update_character(name)
     return redirect(url_for("view_character", name=name))
+
 def update_stats_modifiers(character):
     # Calculate modifiers
     character['ST_modifier'] = get_modifier(int(character.get('active_ST', 10)))
@@ -418,7 +617,6 @@ def update_stats_modifiers(character):
     character['IN_modifier'] = get_modifier(int(character.get('active_IN', 10)))
     character['WP_modifier'] = get_modifier(int(character.get('active_WP', 10)))
     save_character(character)
-
 
 def add_new_debuff(character, debuff_name, debuff_value, debuff_reason, debuff_id, removable):
     """Adds a new debuff or updates an existing one based on debuff_id."""
@@ -442,7 +640,6 @@ def add_new_debuff(character, debuff_name, debuff_value, debuff_reason, debuff_i
         "id": debuff_id
 
     })
-
 
 def apply_debuffs(character):
     character["active_ST"] = character["ST"]
@@ -484,28 +681,14 @@ def apply_debuffs(character):
                         debuff['applied']=True
     save_character(character)
 
-def increase_carry_capacity(size):
-    pass
-
 
 @app.route('/character/<name>')
-def view_character(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@load_character_wrapper
+def view_character(name, character):
     character = initialize_character(character)
     
-    # Get view preference from query parameter, fallback to session, then default to desktop
-    view_mode = request.args.get('view')
-    if view_mode:
-        # If view mode is explicitly set in URL, update session
-        session['view_mode'] = view_mode
-    elif 'view_mode' not in session:
-        # If no view mode in session, default to desktop
-        session['view_mode'] = 'desktop'
-    
-    # Use the view mode from session
-    current_view_mode = session['view_mode']
+    # Get the current view mode
+    current_view_mode = adjust_view_mode()
     
     armor_items = [item for item in character['inventory'] if item.get('is_armor')]
     weapon_items = [item for item in character['inventory'] if item.get('is_weapon')]
@@ -527,15 +710,23 @@ def view_character(name):
     if 'weapon' not in character:
         character['weapon'] = {
             'name': 'None',
-            'damage_dice': 'd4',
+            'damage_dice': '1',
             'stat_modifier': 'Strength',
             'modifier': 0
         }
 
-    # Choose template based on view mode from session
-    template = 'mobile_character.html' if current_view_mode == 'mobile' else 'view_character.html'
-    return render_template(template, character=character, armor_items=armor_items, weapon_items=weapon_items, purse_error=purse_error, view_mode=current_view_mode)
+    # Load global ground items
+    ground_items = load_ground_items()
+    
+    # Load global home items
+    home_items = load_home_items()
 
+    # Choose template based on view mode
+    template = 'mobile_character.html' if current_view_mode == 'mobile' else 'view_character.html'
+    return render_template(template, character=character, armor_items=armor_items, 
+                          weapon_items=weapon_items, purse_error=purse_error, 
+                          view_mode=current_view_mode, ground_items=ground_items,
+                          home_items=home_items)
 
 def calculate_injury_fatigue(active_wound, max_wound):
     if active_wound < max_wound and active_wound > max_wound * 3 / 4:
@@ -554,67 +745,10 @@ def calculate_injury_fatigue(active_wound, max_wound):
         return 0  # Default case if none of the conditions are met
 
 
-def calculate_encumbrance_level_OLDER(name, character_ST):
-    character = load_character(name)
-    if character:
-        if len(character['inventory']) == 0:
-            total_inventory_weight = 0
-        else:
-            total_inventory_weight = sum(item['total_weight'] for item in character['inventory'])
-
-        height = float(character['height'])
-        if 2 <= height < 4:
-            # return "Small"
-            if total_inventory_weight < character_ST * 2 / 3:
-                encumbrance = 0
-            elif total_inventory_weight < character_ST * 1.5:
-                encumbrance = 1
-            elif total_inventory_weight < character_ST * 3:
-                encumbrance = 2
-            elif total_inventory_weight < character_ST * 5:
-                encumbrance = 3
-            elif total_inventory_weight < character_ST * 7:
-                encumbrance = 4
-            else:
-                encumbrance = 5
-        elif 4 <= height < 8:
-            # return "Medium"
-            if total_inventory_weight < character_ST:
-                encumbrance = 0
-            elif total_inventory_weight < character_ST * 2.5:
-                encumbrance = 1
-            elif total_inventory_weight < character_ST * 5:
-                encumbrance = 2
-            elif total_inventory_weight < character_ST * 7.5:
-                encumbrance = 3
-            elif total_inventory_weight < character_ST * 11:
-                encumbrance = 4
-            else:
-                encumbrance = 5
-        elif 8 <= height < 16:
-            # "Large"
-            if total_inventory_weight < character_ST * 1.5:
-                encumbrance = 0
-            elif total_inventory_weight < character_ST * 3:
-                encumbrance = 1
-            elif total_inventory_weight < character_ST * 6:
-                encumbrance = 2
-            elif total_inventory_weight < character_ST * 10:
-                encumbrance = 3
-            elif total_inventory_weight < character_ST * 14:
-                encumbrance = 4
-            else:
-                encumbrance = 5
-
-        return encumbrance
-    return "Character not found", 404
-
-def calculate_encumbrance_level(name, character_ST):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-
+@load_character_wrapper
+def calculate_encumbrance_level(name, character):
     # Calculate total inventory weight
+    character_st = character['active_ST']
     total_inventory_weight = sum(item['total_weight'] for item in character['inventory']) if character['inventory'] else 0
 
     height = float(character['height'])
@@ -642,13 +776,12 @@ def calculate_encumbrance_level(name, character_ST):
         current_index = size_keys.index(applicable_size)
         if current_index + 1 < len(size_keys):  # Ensure it's not already at the max size
             applicable_size = size_keys[current_index + 1]
-
     # Get the thresholds for the final applicable size
     thresholds = size_thresholds[applicable_size]
 
     # Determine encumbrance level based on weight thresholds
     for level, multiplier in enumerate(thresholds):
-        if total_inventory_weight < character_ST * multiplier:
+        if total_inventory_weight < character_st * multiplier:
             return level
 
     return 5  # Max encumbrance if all thresholds are exceeded
@@ -665,7 +798,6 @@ def calculate_encumbrance_penalty(encumbrance):
     encumbrance = str(encumbrance)
     return encumbrance_penalties[encumbrance]
 
-
 def explain_encumbrance_penalty(encumbrance):
     encumbrance_penalty_explanation = {
         "0": "+5 Movement Speed from being Unencumbered",
@@ -678,14 +810,12 @@ def explain_encumbrance_penalty(encumbrance):
     encumbrance = str(encumbrance)
     return encumbrance_penalty_explanation[encumbrance]
 
-
 def update_movement_speed(base_movement_speed, modifier_from_debuff, modifier_from_emcumbrance):
     new_movement_speed = int(base_movement_speed + modifier_from_debuff + modifier_from_emcumbrance)
     if new_movement_speed > 0:
         return new_movement_speed
     else:
         return 0
-
 
 def update_armor_values(character):
 
@@ -707,13 +837,9 @@ def update_armor_values(character):
     save_character(character)
 
 
-
 @app.route('/character/<name>/update', methods=['POST'])
-def update_character(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-
+@load_character_wrapper  
+def update_character(name, character):
     # Get the current view mode from the request
     view_mode = request.args.get('view', 'desktop')
 
@@ -728,175 +854,190 @@ def update_character(name):
     except ValueError:
         return "Invalid data in character file.", 500
 
-    # Update vitality points
-    if 'increase_vitality' in request.form:
-        if active_vitality < max_vitality:
-            active_vitality += 1
-    if 'decrease_vitality' in request.form:
-        if active_vitality > 0:
-            active_vitality -= 1
-    if 'heal_vitality' in request.form:
-        active_vitality = max_vitality
+    # Helper function to handle stat updates
+    def update_stat(increase_key, decrease_key, heal_key, current, max_val, full_value):
+        if increase_key in request.form and current < max_val:
+            current += 1
+        if decrease_key in request.form and current > 0:
+            current -= 1
+        if heal_key in request.form:
+            current = full_value
+        return current
 
-    # Update wound points
-    if 'increase_wound' in request.form:
-        if active_wound < max_wound:
-            active_wound += 1
-    if 'decrease_wound' in request.form:
-        if active_wound > 0:
-            active_wound -= 1
-    if 'heal_wound' in request.form:
-        active_wound = max_wound
+    # Update stats using the helper function
+    active_vitality = update_stat('increase_vitality', 'decrease_vitality', 'heal_vitality', 
+                                  active_vitality, max_vitality, max_vitality)
+    active_wound = update_stat('increase_wound', 'decrease_wound', 'heal_wound', 
+                              active_wound, max_wound, max_wound)
+    exhaustion = update_stat('increase_exhaustion', 'decrease_exhaustion', 'heal_exhaustion', 
+                            exhaustion, 5, 0)
+    extra_injury_fatigue = update_stat('increase_extra_injury_fatigue', 
+                                      'decrease_extra_injury_fatigue', 
+                                      'heal_extra_injury_fatigue', 
+                                      extra_injury_fatigue, 5, 0)
 
-    if 'increase_exhaustion' in request.form:
-        exhaustion += 1
-    if 'decrease_exhaustion' in request.form:
-        if exhaustion > 0:
-            exhaustion -= 1
-    if 'heal_exhaustion' in request.form:
-        exhaustion = 0
-
-    if 'increase_extra_injury_fatigue' in request.form:
-        extra_injury_fatigue += 1
-
-    if 'decrease_extra_injury_fatigue' in request.form:
-        if extra_injury_fatigue > 0:
-            extra_injury_fatigue -= 1
-
-    if 'heal_extra_injury_fatigue' in request.form:
-        extra_injury_fatigue = 0
-
+    # Update character dictionary
     character['active_wound_points'] = active_wound
-
-    # Calculate Injury Fatigue
-    character['powerful_build']=False
+    character['powerful_build'] = False
     character['ac_buff'] = 0
     character['injury_fatigue'] = calculate_injury_fatigue(active_wound, max_wound)
     character['exhaustion'] = exhaustion
     character['extra_injury_fatigue'] = extra_injury_fatigue
-    total_debuff = int(character['injury_fatigue']) + int(character['exhaustion']) + int(
-        character['extra_injury_fatigue'])
-
-    # Calculate Injuty Fatigue Debuffs Based on Wound points
-    injury_fatigue_ST_debuff = 0
-    injury_fatigue_DX_debuff = 0
-    base_movement_speed = int(character['movement_speed'])
-    injury_fatigue_movement_debuff = 0
-    injury_fatigue_movement_debuff_text = ""
-    injury_fatigue_extra_effects = ""
-    injury_fatigue_debuff_reason = "No Injury Fatigue"
-    if total_debuff < 1:
-        vp_modifier = character['CN_modifier']
-        injury_fatigue_movement_debuff_text = "None"
-        character['injury_fatigue_debuffs'] = "None"
-        character = remove_debuff_incall(character, "ST_Injury_Fatigue")
-        character = remove_debuff_incall(character, "DX_Injury_Fatigue")
-        character = remove_debuff_incall(character, "movement_Injury_Fatigue")
-
-    if total_debuff == 1:
-
-        injury_fatigue_ST_debuff = - 1
-        injury_fatigue_DX_debuff = -1
-        injury_fatigue_movement_debuff = -5
-        injury_fatigue_movement_debuff_text = "-5ft "
-        injury_fatigue_extra_effects = "Disadvantage of Physical ability checks or contests. <br>10% Chance of Spell Failure"
-        injury_fatigue_debuff_reason = "One Level of Injury Fatigue"
-
-    if total_debuff == 2:
-        injury_fatigue_ST_debuff = - 3
-        injury_fatigue_DX_debuff = - 3
-        injury_fatigue_movement_debuff = -10
-        injury_fatigue_movement_debuff_text = "-10ft "
-        injury_fatigue_extra_effects = "Disadvantage of all ability checks or contests. <br>30% Chance of Spell Failure"
-        injury_fatigue_debuff_reason = "Two Levels of Injury Fatigue"
-
-    if total_debuff == 3:
-        injury_fatigue_ST_debuff = - 5
-        injury_fatigue_DX_debuff = - 5
-        injury_fatigue_movement_debuff = -15
-        injury_fatigue_movement_debuff_text = "-15ft"
-        injury_fatigue_extra_effects = "Disadvantage of all ability checks or contests, attacks and saving throws. <br>50% Chance of Spell Failure"
-        injury_fatigue_debuff_reason = "Three Levels of Injury Fatigue"
-    if total_debuff == 4:
-        injury_fatigue_ST_debuff = - 5
-        injury_fatigue_DX_debuff = - 5
-        base_movement_speed = 0
-        injury_fatigue_movement_debuff_text = "Incapacitated"
-        injury_fatigue_extra_effects = "Can't take actions or reactions."
-        injury_fatigue_debuff_reason = "Four Levels of Injury Fatigue, you are Incapacitated"
-    if total_debuff == 5:
-        injury_fatigue_ST_debuff = - 5
-        injury_fatigue_DX_debuff = - 5
-        base_movement_speed = -10
-        injury_fatigue_movement_debuff_text = "Incapacitated"
-        injury_fatigue_debuff_reason = "Five Levels of Injury Fatigue, you are Incapacitated"
-
-    if total_debuff == 6:
-        character['active_ST'] = int(character['ST']) - 5
-        injury_fatigue_DX_debuff = - 5
-        base_movement_speed = -10
-        injury_fatigue_movement_debuff_text = "Dead"
-        injury_fatigue_debuff_reason = "Six Levels of Injury Fatigue, you are DEAD"
-
-
-    # Apply Debuffs to Stats
-    add_new_debuff(character, "debuff_st", injury_fatigue_ST_debuff, injury_fatigue_debuff_reason, "ST_Injury_Fatigue",
-                   False)
-    add_new_debuff(character, "debuff_dx", injury_fatigue_DX_debuff, injury_fatigue_debuff_reason, "DX_Injury_Fatigue",
-                   False)
-    add_new_debuff(character, "debuff_movement", injury_fatigue_movement_debuff, injury_fatigue_debuff_reason,
-                   "movement_Injury_Fatigue", False)
-
-    apply_debuffs(character)
-    if total_debuff > 0:
-        vp_modifier = character['active_wound_points']
-    else:
-        vp_modifier = character['active_CN']
-    # Calculate the rest of the stats
-    character['encumbrance'] = calculate_encumbrance_level(name, character['active_ST'])
-    character['active_movement_speed'] = update_movement_speed(base_movement_speed, injury_fatigue_movement_debuff,
-                                                               int(calculate_encumbrance_penalty(
-                                                                   character['encumbrance']))) + character[
-                                             "debuff_movement"]
+    
+    # Calculate total debuff
+    total_debuff = int(character['injury_fatigue']) + int(character['exhaustion']) + int(character['extra_injury_fatigue'])
+    
+    # Apply fatigue effects based on total debuff level
+    injury_effects = apply_injury_fatigue_effects(character, total_debuff)
+    
+    # Calculate base stats
+    vp_modifier = character['active_CN'] if total_debuff == 0 else character['active_wound_points']
+    
+    # Update character derived stats
+    character['encumbrance'] = calculate_encumbrance_level(name)
+    encumbrance_penalty = int(calculate_encumbrance_penalty(character['encumbrance']))
+    
+    base_movement_speed = int(character['movement_speed']) if total_debuff < 4 else 0
+    injury_movement_debuff = injury_effects.get('movement_debuff', 0)
+    
+    character['active_movement_speed'] = update_movement_speed(
+        base_movement_speed, 
+        injury_movement_debuff, 
+        encumbrance_penalty
+    ) + character["debuff_movement"]
+    
     character['encumbrance_penalty_explained'] = explain_encumbrance_penalty(character['encumbrance'])
-    character['active_movement_debuffs'] = injury_fatigue_movement_debuff_text
-    character['injury_fatigue_debuffs'] = injury_fatigue_extra_effects
+    character['active_movement_debuffs'] = injury_effects.get('movement_text', 'None')
+    character['injury_fatigue_debuffs'] = injury_effects.get('extra_effects', 'None')
     character['total_inventory_weight'] = sum(item['total_weight'] for item in character['inventory'])
-    # Caculate Vitality Points and Max Vitality Points
-    character['max_vitality_points'] = calculate_vitality_points(character['vitality_points_dice_rolls'],
-                                                                 character['level'], vp_modifier) + character[
-                                           'debuff_max_vp']
+    
+    # Calculate vitality points
+    character['max_vitality_points'] = calculate_vitality_points(
+        character['vitality_points_dice_rolls'],
+        character['level'], 
+        vp_modifier
+    ) + character['debuff_max_vp']
+    
     character["active_vitality_points"] = min(active_vitality, character["max_vitality_points"])
-    sorted_skills = dict(sorted(character['skills'].items()))
-    character['skills'] = sorted_skills
-    save_character(character)
+    
+    # Sort skills alphabetically
+    character['skills'] = dict(sorted(character['skills'].items()))
+    
+    # Update derived stats
     update_stats_modifiers(character)
     update_armor_values(character)
     update_proficiency_bonus_incall(character)
+    save_character(character)
+    check_for_weapon(character)
     character['weapon_hit_chances'] = calculate_hit_chances(character)
     character['weapon_total_damage_modifier'] = calculate_total_weapon_damage_modifier(character)
-    character['passive_perception']=10+int(character['WP_modifier'])
+    character['passive_perception'] = 10 + int(character['WP_modifier'])
+        
     save_character(character)
     
     # Redirect back to the same view mode
     return redirect(url_for('view_character', name=name, view=view_mode))
 
+# Create a new helper function to handle injury fatigue effects
+def apply_injury_fatigue_effects(character, total_debuff):
+    """Apply injury fatigue effects based on total debuff level."""
+    effects = {
+        'st_debuff': 0,
+        'dx_debuff': 0,
+        'movement_debuff': 0,
+        'movement_text': 'None',
+        'extra_effects': '',
+        'debuff_reason': 'No Injury Fatigue'
+    }
+    
+    # Remove existing debuffs if no fatigue
+    if total_debuff < 1:
+        print ('NO INJURY FATIGUE')
+        character = remove_debuff_incall(character, "ST_Injury_Fatigue")
+        character = remove_debuff_incall(character, "DX_Injury_Fatigue")
+        character = remove_debuff_incall(character, "movement_Injury_Fatigue")
+        
+    else:    
+    # Define effects based on debuff level
+        debuff_levels = {
+            1: {
+                'st_debuff': -1,
+                'dx_debuff': -1,
+                'movement_debuff': -5,
+                'movement_text': '-5ft',
+                'extra_effects': 'Disadvantage of Physical ability checks or contests. <br>10% Chance of Spell Failure',
+                'debuff_reason': 'One Level of Injury Fatigue'
+            },
+            2: {
+                'st_debuff': -3,
+                'dx_debuff': -3,
+                'movement_debuff': -10,
+                'movement_text': '-10ft',
+                'extra_effects': 'Disadvantage of all ability checks or contests. <br>30% Chance of Spell Failure',
+                'debuff_reason': 'Two Levels of Injury Fatigue'
+            },
+            3: {
+                'st_debuff': -5,
+                'dx_debuff': -5,
+                'movement_debuff': -15,
+                'movement_text': '-15ft',
+                'extra_effects': 'Disadvantage of all ability checks or contests, attacks and saving throws. <br>50% Chance of Spell Failure',
+                'debuff_reason': 'Three Levels of Injury Fatigue'
+            },
+            4: {
+                'st_debuff': -5,
+                'dx_debuff': -5,
+                'movement_debuff': 0,
+                'movement_text': 'Incapacitated',
+                'extra_effects': "Can't take actions or reactions.",
+                'debuff_reason': 'Four Levels of Injury Fatigue, you are Incapacitated'
+            },
+            5: {
+                'st_debuff': -5,
+                'dx_debuff': -5,
+                'movement_debuff': -10,
+                'movement_text': 'Incapacitated',
+                'debuff_reason': 'Five Levels of Injury Fatigue, you are Incapacitated'
+            },
+            6: {
+                'st_debuff': -5,
+                'dx_debuff': -5,
+                'movement_debuff': -10,
+                'movement_text': 'Dead',
+                'debuff_reason': 'Six Levels of Injury Fatigue, you are DEAD'
+            }
+        }
+        
+        # Get effects for current debuff level (capped at 6)
+        level = min(total_debuff, 6)
+        effects = debuff_levels.get(level, effects)
+        
+        # Apply the debuffs
+        add_new_debuff(character, "debuff_st", effects['st_debuff'], effects['debuff_reason'], "ST_Injury_Fatigue", False)
+        add_new_debuff(character, "debuff_dx", effects['dx_debuff'], effects['debuff_reason'], "DX_Injury_Fatigue", False)
+        add_new_debuff(character, "debuff_movement", effects['movement_debuff'], effects['debuff_reason'], "movement_Injury_Fatigue", False)
+    
+    save_character(character)
+    apply_debuffs(character)
+    
+    return effects
 
 # Route to display the add item form for a specific character
-@app.route('/character/<name>/inventory/add_item', methods=['GET'])
-def add_item(name):
-    character = load_character(name)
-    if character:
-        return render_template('add_item.html', character=character)
-    else:
-        return "Character not found", 404
+# @app.route('/character/<name>/inventory/add_item', methods=['GET'])
+
+# def add_item(name):
+#     character = load_character(name)
+#     if character:
+#         return render_template('add_item.html', character=character)
+#     else:
+#         return "Character not found", 404
 
 
 # Route to handle adding an item to the inventory of a specific character
 @app.route('/character/<name>/inventory/add_item', methods=['POST'])
-def add_item_post(name):
-    character = load_character(name)
-    if character:
+@character_handler
+def add_item_post(name, character):
+    
         item_name = request.form['item_name']
         units = int(request.form['units'])
         weight_per_unit = float(request.form['weight_per_unit'])
@@ -955,118 +1096,79 @@ def add_item_post(name):
             item['total_weight'] = total_weight  # Initially just the container's own weight
             
         character['inventory'].append(item)
-        save_character(character)
-        update_character(character['name'])
-        return redirect(url_for('view_character', name=name))
-    else:
-        return "Character not found", 404
-
 
 # Route to display the current inventory of a specific character
-@app.route('/character/<name>/inventory', methods=['GET'])
-def show_inventory(name):
-    # Load the character data
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-    total_inventory_weight = sum(item['total_weight'] for item in character['inventory'])
-    # Render the inventory page
-    return render_template('inventory.html', character=character, total_inventory_weight=total_inventory_weight)
+# @app.route('/character/<name>/inventory', methods=['GET'])
+# @load_character_wrapper
+# def show_inventory(name):
+#     # Load the character data
+   
+#     total_inventory_weight = sum(item['total_weight'] for item in character['inventory'])
+#     # Render the inventory page
+#     return render_template('inventory.html', character=character, total_inventory_weight=total_inventory_weight)
 
 
 @app.route('/character/<name>/inventory/drop_item', methods=['POST'])
-def drop_item(name):
-    character = load_character(name)
-    if character:
+@character_handler
+def drop_item(name, character):
         item_name = request.form['item_name']
         # Find the item in inventory
         item = next((item for item in character.get('inventory', []) if item['item_name'] == item_name), None)
         if item:
-            # Remove the item from inventory and add to 'on_the_ground'
+            # Remove the item from inventory and add to global ground storage
             character['inventory'] = [i for i in character.get('inventory', []) if i['item_name'] != item_name]
-            if 'on_the_ground' not in character:
-                character['on_the_ground'] = []
-            character['on_the_ground'].append(item)
+            drop_item_to_ground(item)
 
-            # Save the updated character
-            save_character(character)
-            update_character(character['name'])
-            return redirect(url_for('view_character', name=name))
-    return "Character not found", 404
 
 
 @app.route('/character/<name>/inventory/store_item', methods=['POST'])
-def store_item(name):
-    character = load_character(name)
-    if character:
+@character_handler
+def store_item(name, character):
+    
         item_name = request.form['item_name']
         # Find the item in inventory
         item = next((item for item in character.get('inventory', []) if item['item_name'] == item_name), None)
         if item:
-            # Remove the item from inventory and add to 'house_inventory'
+            # Remove the item from inventory and add to global home storage
             character['inventory'] = [i for i in character.get('inventory', []) if i['item_name'] != item_name]
-            if 'house_inventory' not in character:
-                character['house_inventory'] = []
-            character['house_inventory'].append(item)
+            store_item_at_home(item)
 
-            # Save the updated character
-            save_character(character)
-            update_character(character['name'])
-            return redirect(url_for('view_character', name=name))
-    return "Character not found", 404
 
 
 @app.route('/character/<name>/inventory/pick_up', methods=['POST'])
-def pickup_item(name):
-    character = load_character(name)
-    if character:
+@character_handler
+def pickup_item(name, character):
+   
         item_name = request.form['item_name']
-        # print(f'Im picking up {item_name}')
-        # Check if item is in 'on_the_ground'
-        item = next((item for item in character.get('on_the_ground', []) if item['item_name'] == item_name), None)
+        # Check if item is in global ground storage
+        item = pickup_item_from_ground(item_name)
         if item:
-            # Remove the item from 'on_the_ground' and add to inventory
-            character['on_the_ground'] = [i for i in character.get('on_the_ground', []) if
-                                          i['item_name'] != item_name]
+            # Add the item to character inventory
             if 'inventory' not in character:
                 character['inventory'] = []
             character['inventory'].append(item)
 
-        # Check if item is in 'house_inventory'
-        # print(f'Im picking up {item_name}')
-        item = next((item for item in character.get('house_inventory', []) if item['item_name'] == item_name), None)
+        # Check if item is in global home storage
+        item = pickup_item_from_home(item_name)
         if item:
-            # Remove the item from 'house_inventory' and add to inventory
-            character['house_inventory'] = [i for i in character.get('house_inventory', []) if
-                                            i['item_name'] != item_name]
+            # Add the item to character inventory
             if 'inventory' not in character:
                 character['inventory'] = []
             character['inventory'].append(item)
-
-        # Save the updated character
-        save_character(character)
-        update_character(character['name'])
-        return redirect(url_for('view_character', name=name))
-    else:
-        return "Character not found", 404
 
 
 @app.route('/character/<name>/inventory/reset_on_the_ground', methods=['POST'])
-def reset_on_the_ground(name):
-    character = load_character(name)
-    if character:
-        # Clear the 'on_the_ground' list
-        character['on_the_ground'] = []
-        save_character(character)
-        return redirect(url_for('view_character', name=name))
-    return "Character not found", 404
+@character_handler
+def reset_on_the_ground(name, character):
+        # Clear all items from the global ground storage
+        reset_ground_items()
+   
 
 
 @app.route('/character/<name>/toggle_shield', methods=['POST'])
-def equip_shield(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@character_handler
+def equip_shield(name, character):
+    
     shield_equipped = request.form.get('shield_equipped')
     if shield_equipped:
         character['shield_equipped'] = True
@@ -1081,16 +1183,11 @@ def equip_shield(name):
         character['total_ac'] = total_ac
     # Update AC value based on wether there is a shield equipped or not
 
-    save_character(character)
-    update_character(name)
-    return redirect(url_for('view_character', name=name))
-
 
 @app.route('/character/<name>/equip_armor', methods=['POST'])
-def equip_armor(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@character_handler
+def equip_armor(name, character):
+   
     selected_armor_name = request.form.get('selected_armor', 'No Armor')
     armor_items = [item for item in character['inventory'] if item.get('is_armor')]
 
@@ -1116,17 +1213,11 @@ def equip_armor(name):
         else:
             return "Selected armor not found in inventory", 404
 
-    # Update AC value based on the selected armor and DX modifier
-
-    save_character(character)
-    update_character(name)
-    return redirect(url_for('view_character', name=name))
 
 @app.route("/character/<name>/apply_weapon_proficiency", methods=["POST"])
-def apply_weapon_proficiency(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@character_handler
+def apply_weapon_proficiency(name, character):
+ 
     # print(request.form)
     selected_skill = request.form.get("selected_weapon_proficiency")
     # print(selected_skill)
@@ -1134,22 +1225,20 @@ def apply_weapon_proficiency(name):
         selected_skill = None
 
     character['weapon']["weapon_proficiency"] = selected_skill  # Store selection
-    save_character(character)
-    update_character(name)
-    return redirect(url_for('view_character', name=name))
+ 
 
 @app.route('/character/<name>/equip_weapon', methods=['POST'])
-def equip_weapon(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@character_handler
+def equip_weapon(name, character):
+   
     selected_weapon_name = request.form.get('selected_weapon', 'Unarmed')
+    print(selected_weapon_name)
     weapon_items = [item for item in character['inventory'] if item.get('is_weapon')]
 
     if selected_weapon_name == 'Unarmed':
         character['weapon'] = {
             'name': 'Unarmed',
-            'damage_dice': 'd4',
+            'damage_dice': '1',
             'weapon_stat_modifier': 'Strength',
             'weapon_modifiers':0
         }
@@ -1169,10 +1258,19 @@ def equip_weapon(name):
             return "Selected weapon not found in inventory", 404
 
     # Update AC value based on the selected armor and DX modifier
-
+def check_for_weapon(character):
+    equipped_weapon = character['weapon'].get('name')
+   
+    item = next((item for item in character.get('inventory', []) if item['item_name'] == equipped_weapon), None)
+    if (not item) or (equipped_weapon == None):
+            character['weapon'] = {
+        'name': 'Unarmed',
+        'damage_dice': '1',
+        'weapon_stat_modifier': 'Strength',
+        'weapon_modifiers':0
+    }
     save_character(character)
-    update_character(name)
-    return redirect(url_for('view_character', name=name))
+  
 
 def calculate_hit_chances(character):
     weapon_stat_modifier = 0  # Default value
@@ -1204,25 +1302,20 @@ def calculate_total_weapon_damage_modifier(character):
     return int(total_increased_hit_chance)
 
 @app.route('/character/<name>/update_temporary_armor_modifier', methods=['POST'])
-def update_temporary_armor_modifier(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@character_handler
+def update_temporary_armor_modifier(name, character):
+    
     modifier_value = int(request.form.get('temporary_armor_modifier'))
     character['temp_armor_modifier'] = modifier_value
 
     # Update AC value based on the selected armor and DX modifier
 
-    save_character(character)
-    update_character(name)
-    return redirect(url_for('view_character', name=name))
 
 
 @app.route("/add_trait/<name>", methods=["POST"])
-def add_trait(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@character_handler
+def add_trait(name, character):
+
 
     new_trait = {
         "id": str(uuid.uuid4()),  # Unique ID for the ability
@@ -1235,43 +1328,34 @@ def add_trait(name):
         character["traits"] = []
 
     character["traits"].append(new_trait)
-    save_character(character)
-
-    return redirect(url_for("view_character", name=name))
+  
 
 
-@app.route("/add_trait_from_level_up/<name>", methods=["POST"])
-def add_trait_from_level_up(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+# @app.route("/add_trait_from_level_up/<name>", methods=["POST"])
+# @character_handler
+# def add_trait_from_level_up(name):
 
-    new_trait = {
-        "id": str(uuid.uuid4()),  # Unique ID for the ability
-        "name": request.form["trait_name"],
-        "description": request.form["trait_description"],
 
-    }
+#     new_trait = {
+#         "id": str(uuid.uuid4()),  # Unique ID for the ability
+#         "name": request.form["trait_name"],
+#         "description": request.form["trait_description"],
 
-    if "traits" not in character:
-        character["traits"] = []
+#     }
 
-    character["traits"].append(new_trait)
-    save_character(character)
+#     if "traits" not in character:
+#         character["traits"] = []
 
-    return redirect(url_for("level_up", name=name))
+
+
 
 @app.route("/add_trait_from_creation/<name>", methods=["POST"])
-def add_trait_from_creation(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-
+@load_character_wrapper
+def add_trait_from_creation(name, character):
     new_trait = {
         "id": str(uuid.uuid4()),  # Unique ID for the ability
         "name": request.form["trait_name"],
         "description": request.form["trait_description"],
-
     }
 
     if "traits" not in character:
@@ -1281,43 +1365,32 @@ def add_trait_from_creation(name):
     save_character(character)
 
     return render_template("create_character_part2.html", character=character)
-@app.route("/edit_trait/<name>/<trait_id>", methods=["GET"])
-def edit_trait(name, trait_id):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
 
-    trait = next((t for t in character.get("traits", []) if t["id"] == trait_id), None)
-    if not trait:
-        return "Trait not found", 404
+# @app.route("/edit_trait/<name>/<trait_id>", methods=["GET"])
+# @load_character_wrapper
+# def edit_trait(name, trait_id):
 
-    return render_template("edit_trait.html", character=character, trait=trait)
+
+#     trait = next((t for t in character.get("traits", []) if t["id"] == trait_id), None)
+#     if not trait:
+#         return "Trait not found", 404
+
+#     return render_template("edit_trait.html", character=character, trait=trait)
 
 
 @app.route('/remove_skill/<name>', methods=['POST'])
-def remove_skill(name):
+@character_handler
+def remove_skill(name, character):
     skill_to_remove = request.form.get("skill_to_remove")
-
-    # Load the character (assuming you have a function to get character data)
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
 
     if character and (skill_to_remove in character["skills"]):
         del character["skills"][skill_to_remove]  # Remove the skill
 
-        # Save changes (assuming you have a save function)
-        save_character(character)
 
-    update_character(name)
-    return redirect(url_for("view_character", name=name))
 
 @app.route("/edit_trait/<name>/<trait_id>", methods=["POST"])
-def update_trait(name, trait_id):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-
+@character_handler
+def update_trait(name, trait_id, character):
     trait = next((t for t in character.get("traits", []) if t["id"] == trait_id), None)
     if not trait:
         return "Trait not found", 404
@@ -1325,69 +1398,57 @@ def update_trait(name, trait_id):
     trait["name"] = request.form["trait_name"]
     trait["description"] = request.form["trait_description"]
 
-    save_character(character)
-
-    return redirect(url_for("view_character", name=name))
-
-
-# Route to display the add proficiency form for a specific character
-@app.route('/character/<name>/add_proficiency', methods=['GET'])
-def add_proficiency(name):
-    character = load_character(name)
-    if character:
-        return render_template('add_proficiency.html', character=character)
-    else:
-        return "Character not found", 404
+   
+# # Route to display the add proficiency form for a specific character
+# @app.route('/character/<name>/add_proficiency', methods=['GET'])
+# def add_proficiency(name):
+#     character = load_character(name)
+#     if character:
+#         return render_template('add_proficiency.html', character=character)
+#     else:
+#         return "Character not found", 404
 
 
-@app.route('/character/<name>/add_proficiency', methods=['POST'])
-def add_proficiency_post(name):
-    character = load_character(name)
-    if character:
-        proficiency_name = request.form['proficiency_name']
-        proficiency_description = request.form['proficiency_description']
+# @app.route('/character/<name>/add_proficiency', methods=['POST'])
+# def add_proficiency_post(name):
+#     character = load_character(name)
+#     if character:
+#         proficiency_name = request.form['proficiency_name']
+#         proficiency_description = request.form['proficiency_description']
 
-        proficiency = {
-            'proficiency_name': proficiency_name,
-            'proficiency_description': proficiency_description,
+#         proficiency = {
+#             'proficiency_name': proficiency_name,
+#             'proficiency_description': proficiency_description,
 
-        }
+#         }
 
-        character['proficiencies'].append(proficiency)
+#         character['proficiencies'].append(proficiency)
 
-        # Save the character's updated data
-        save_character(character)
+#         # Save the character's updated data
+#         save_character(character)
 
-        return redirect(url_for('view_character', name=name))
-    else:
-        return "Character not found", 404
+#         return redirect(url_for('view_character', name=name))
+#     else:
+#         return "Character not found", 404
 
 
 @app.route('/character/<name>/delete_proficiency', methods=['POST'])
-def delete_proficiency(name):
-    character = load_character(name)
-    if character:
+@character_handler
+def delete_proficiency(name, character):
+    
         data = request.get_json()
         proficiency_index = int(data['proficiency_index'])
-
         # Delete the proficiency at the given index
         if proficiency_index < len(character['proficiencies']):
             del character['proficiencies'][proficiency_index]
-
-            # Save the character's updated data
-            save_character(character)
-
             return jsonify({"message": "Proficiency deleted successfully"}), 200
-        else:
-            return jsonify({"error": "Invalid proficiency index"}), 400
-    else:
-        return jsonify({"error": "Character not found"}), 404
+        
 
 
 @app.route('/character/<name>/update_proficiency', methods=['POST'])
-def update_proficiency(name):
-    character = load_character(name)
-    if character:
+@character_handler
+def update_proficiency(name, character):
+   
         data = request.get_json()
         proficiency_index = int(data['proficiency_index'])
         new_name = data['new_name']
@@ -1397,19 +1458,12 @@ def update_proficiency(name):
         character['proficiencies'][proficiency_index]['proficiency_name'] = new_name
         character['proficiencies'][proficiency_index]['proficiency_description'] = new_description
 
-        # Save the character's updated data
-        save_character(character)
 
-        return jsonify({"message": "Proficiency updated successfully"}), 200
-    else:
-        return jsonify({"error": "Character not found"}), 404
 
 
 @app.route('/character/<name>/add_debuff', methods=['POST'])
-def add_debuff(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@character_handler
+def add_debuff(name, character):
 
     debuff_name = request.form["debuff_name"]
     debuff_value = float(request.form["debuff_value"])  # Using float to handle decimal values
@@ -1432,16 +1486,11 @@ def add_debuff(name):
 
     add_new_debuff(character, debuff_name, debuff_value, debuff_reason, debuff_id, True)
 
-    save_character(character)
-    update_character(name)
-    return redirect(url_for("view_character", name=name))
 
 
 @app.route('/character/<name>/remove_debuff/<debuff_id>', methods=['POST'])
-def remove_debuff(name, debuff_id):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@load_character_wrapper
+def remove_debuff(name, debuff_id, character):
     remove_debuff_incall(character, debuff_id)
    
     # apply_debuffs(character)
@@ -1463,12 +1512,10 @@ def remove_debuff_incall(character, debuff_id):
     character["debuffs"] = [debuff for debuff in character["debuffs"] if debuff["id"] != debuff_id]
     return character
 
-
-def update_purse_function(name, amount, currency):
+@load_character_wrapper
+def update_purse_function(name, amount, currency, character):
     """Updates character's purse with proper coin conversion."""
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+
     if character:
         # Convert all coins to total copper for easy calculations
         total_copper = character["gold"] * 100 + character["silver"] * 10 + character["copper"]
@@ -1517,49 +1564,29 @@ def update_purse(name):
 
 
 @app.route("/character/<name>/update_proficiency_bonus", methods=["POST"])
-def update_proficiency_bonus(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-    if character:
+@character_handler
+def update_proficiency_bonus(name, character):
         update_proficiency_bonus_incall(character)
-    update_character(name)
-    return redirect(url_for("view_character", name=name))
-
-
-@app.route("/character/<name>/update_proficiency_bonus_from_level_up", methods=["POST"])
-def update_proficiency_bonus_from_level_up(name):
-    character = load_character(name)
-    update_character(name)
-    return render_template("level_up.html", character=character)
 
 @app.route("/character/<name>/update_proficiency_bonus_from_creation", methods=["POST"])
-def update_proficiency_bonus_from_creation(name):
-    character = load_character(name)
+@load_character_wrapper
+def update_proficiency_bonus_from_creation(name, character):
     update_character(name)
     return render_template("create_character_part2.html", character=character)
 
 def update_proficiency_bonus_incall(character):
     for skill in character['skills']:
-        # character['skills'][skill]['proficiency_bonus'] = int(request.form.get(skill, 0))
-        # remove adding the Stat Modifier here
-        # modifier_to_get = character['skills'][skill]['stat'] + "_modifier"
+        
         character['skills'][skill]['total_value'] = (
                 int(character['skills'][skill]['proficiency_bonus']) +
-                int(character['skills'][skill].get('buff', 0))   # Default to 0 if 'buff' doesn't exist
-                # + int((character[modifier_to_get]))
-        )
-        # Save the updated character data to JSON
+                int(character['skills'][skill].get('buff', 0))   )
     save_character(character)
 
 
 @app.route("/character/<name>/add_custom_skill", methods=["POST"])
-def add_custom_skill(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-
-    # Retrieve form data
+@character_handler
+def add_custom_skill(name, character):
+   
     custom_skill_name = request.form.get("custom_skill_name")
     # custom_skill_stat = request.form.get("custom_skill_stat")  # e.g., 'DX', 'IN', etc.
 
@@ -1574,17 +1601,11 @@ def add_custom_skill(name):
             "buff": 0
         }
 
-        save_character(character)
-        update_character(name)  # Ensure updates reflect
-
-    return redirect(url_for("view_character", name=name))
 
 
 @app.route("/character/<name>/add_custom_skill_from_creation", methods=["POST"])
-def add_custom_skill_from_creation(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@load_character_wrapper
+def add_custom_skill_from_creation(name, character):
 
     # Retrieve form data
     custom_skill_name = request.form.get("custom_skill_name")
@@ -1604,37 +1625,34 @@ def add_custom_skill_from_creation(name):
         update_character(name)  # Ensure updates reflect
 
     return render_template("create_character_part2.html", character=character)
-@app.route("/character/<name>/add_custom_skill_from_level_up", methods=["POST"])
-def add_custom_skill_from_level_up(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
 
-    # Retrieve form data
-    custom_skill_name = request.form.get("custom_skill_name")
-    custom_skill_stat = request.form.get("custom_skill_stat")  # e.g., 'DX', 'IN', etc.
+# @app.route("/character/<name>/add_custom_skill_from_level_up", methods=["POST"])
+# @load_character_wrapper
+# def add_custom_skill_from_level_up(name):
+   
 
-    if custom_skill_name and custom_skill_stat:
-        stat_modifier = get_modifier(character[custom_skill_stat])  # Ensure correct stat modifier
-        proficiency_bonus = 0  # Default, user can update later
+#     # Retrieve form data
+#     custom_skill_name = request.form.get("custom_skill_name")
+#     custom_skill_stat = request.form.get("custom_skill_stat")  # e.g., 'DX', 'IN', etc.
 
-        character["skills"][custom_skill_name] = {
-            "stat": custom_skill_stat,
-            "proficiency_bonus": proficiency_bonus,
-            "buff": 0
-        }
+#     if custom_skill_name and custom_skill_stat:
+#         stat_modifier = get_modifier(character[custom_skill_stat])  # Ensure correct stat modifier
+#         proficiency_bonus = 0  # Default, user can update later
 
-        save_character(character)
-        update_character(name)  # Ensure updates reflect
+#         character["skills"][custom_skill_name] = {
+#             "stat": custom_skill_stat,
+#             "proficiency_bonus": proficiency_bonus,
+#             "buff": 0
+#         }
 
-    return render_template("level_up.html", character=character)
+#         save_character(character)
+#         update_character(name)  # Ensure updates reflect
+
+#     return render_template("level_up.html", character=character)
 
 @app.route("/add_active_ability/<name>", methods=["POST"])
-def add_active_ability(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-
+@character_handler
+def add_active_ability(name, character):
     new_ability = {
         "id": str(uuid.uuid4()),  # Unique ID for the ability
         "name": request.form["ability_name"],
@@ -1649,39 +1667,33 @@ def add_active_ability(name):
         character["active_abilities"] = []
 
     character["active_abilities"].append(new_ability)
-    save_character(character)
-
-    return redirect(url_for("view_character", name=name))
+  
 
 
-@app.route("/add_active_ability_from_level_up/<name>", methods=["POST"])
-def add_active_ability_from_level_up(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+# @app.route("/add_active_ability_from_level_up/<name>", methods=["POST"])
+# @load_character_wrapper
+# def add_active_ability_from_level_up(name):
+  
 
-    new_ability = {
-        "id": str(uuid.uuid4()),  # Unique ID for the ability
-        "name": request.form["ability_name"],
-        "description": request.form["ability_description"],
-        "dc": int(request.form["ability_dc"]),
-        "uses_per_long_rest": int(request.form["ability_uses"]),
-        "uses_left": int(request.form["ability_uses"]),  # Start with full uses
-    }
+#     new_ability = {
+#         "id": str(uuid.uuid4()),  # Unique ID for the ability
+#         "name": request.form["ability_name"],
+#         "description": request.form["ability_description"],
+#         "dc": int(request.form["ability_dc"]),
+#         "uses_per_long_rest": int(request.form["ability_uses"]),
+#         "uses_left": int(request.form["ability_uses"]),  # Start with full uses
+#     }
 
-    if "active_abilities" not in character:
-        character["active_abilities"] = []
+#     if "active_abilities" not in character:
+#         character["active_abilities"] = []
 
-    character["active_abilities"].append(new_ability)
-    save_character(character)
-    return render_template("level_up.html", character=character)
+#     character["active_abilities"].append(new_ability)
+#     save_character(character)
+#     return render_template("level_up.html", character=character)
 
 @app.route("/add_active_ability_from_creation/<name>", methods=["POST"])
-def add_active_ability_from_creation(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-
+@load_character_wrapper
+def add_active_ability_from_creation(name, character):
     new_ability = {
         "id": str(uuid.uuid4()),  # Unique ID for the ability
         "name": request.form["ability_name"],
@@ -1697,49 +1709,42 @@ def add_active_ability_from_creation(name):
     character["active_abilities"].append(new_ability)
     save_character(character)
     return render_template("create_character_part2.html", character=character)
+
 @app.route("/use_ability/<name>/<ability_id>", methods=["POST"])
-def use_ability(name, ability_id):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@character_handler
+def use_ability(name, character, ability_id):
 
     for ability in character.get("active_abilities", []):
         if ability["id"] == ability_id:
             ability["uses_left"] -= 1
             break
 
-    save_character(character)
-    return redirect(url_for("view_character", name=name))
 
 
 @app.route("/remove_active_ability/<name>/<ability_id>", methods=["POST"])
-def remove_active_ability(name, ability_id):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@character_handler
+def remove_active_ability(name, ability_id, character):
+  
     new_active_abilities = []
     for ability in character.get("active_abilities", []):
         if ability["id"] != ability_id:
             new_active_abilities.append(ability)
 
     character["active_abilities"] = new_active_abilities
-    save_character(character)
-    return redirect(url_for("view_character", name=name))
+  
 
 
 @app.route("/remove_trait/<name>/<trait_id>", methods=["POST"])
+@character_handler
 def remove_trait(name, trait_id):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+ 
     new_traits = []
     for trait in character.get("traits", []):
         if trait["id"] != trait_id:
             new_traits.append(trait)
 
     character["traits"] = new_traits
-    save_character(character)
-    return redirect(url_for("view_character", name=name))
+  
 
 
 def reload_abilities_on_long_rest(character):
@@ -1755,9 +1760,9 @@ def reload_abilities_on_short_rest(character):
             ability["uses_left"] = ability["uses_per_long_rest"]
     save_character(character)
 @app.route('/level_up/<name>', methods=['GET', 'POST'])
-def level_up(name):
+@character_handler
+def level_up(name, character):
    
-    character = load_character(name)
     hit_dice_roll = request.form.get('hit_dice_roll')
     wp_increase = request.form.get('increase_wound_points')
 
@@ -1766,62 +1771,47 @@ def level_up(name):
     character['active_vitality_points'] = character['max_vitality_points']
     character['active_wound_points'] = character['max_wound_points']
     character['level'] +=1
-    save_character(character)
-    update_character(name)
-    return redirect(url_for("view_character", name=name))
+   
 
 
 @app.route('/change_dc/<name>/<ability_id>/<int:change>', methods=['POST'])
+@character_handler
 def change_dc(name, ability_id, change):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-
     # Find the ability and update its DC
     for ability in character.get("active_abilities", []):
         if ability["id"] == ability_id:
             ability["dc"] += change
             break
 
-    save_character(character)
-    return redirect(url_for("view_character", name=name))
 
 
-@app.route('/increase_stat/<name>/<stat_id>', methods=['POST'])
-def increase_stat(name, stat_id):
-    character = load_character(name)
+# @app.route('/increase_stat/<name>/<stat_id>', methods=['POST'])
+# def increase_stat(name, stat_id):
+#     character = load_character(name)
 
-    if not character:
-        return "Character not found", 404
+#     if not character:
+#         return "Character not found", 404
 
-    current_value = int(character[stat_id])
-    character[stat_id] = current_value + 1
+#     current_value = int(character[stat_id])
+#     character[stat_id] = current_value + 1
 
-    save_character(character)
-    return render_template("level_up.html", character=character)
+#     save_character(character)
+#     return render_template("level_up.html", character=character)
 
 
 @app.route('/confirm_level_up/<name>', methods=['POST'])
-def confirm_level_up(name):
-    character = load_character(name)
-
-    if not character:
-        return "Character not found", 404
+@character_handler
+def confirm_level_up(name, character):
 
     character['vitality_points_dice_rolls'].append(request.form.get('vp_roll'))
     character["max_wound_points"] += int(request.form.get('wp'))
     character['level'] +=1
-    save_character(character)
-    update_character(name)
-    return redirect(url_for("view_character", name=name))
+
 
 
 @app.route('/short_rest/<name>', methods=['POST'])
-def short_rest(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-
+@character_handler
+def short_rest(name, character):
     # Get view mode from query parameter
     view_mode = request.args.get('view', 'desktop')
 
@@ -1847,75 +1837,63 @@ def short_rest(name):
 
     # Reload abilities that recharge on short rest
     reload_abilities_on_short_rest(character)
-    save_character(character)
     
-    # Redirect back to the same view mode
-    return redirect(url_for("view_character", name=name, view=view_mode))
 
 
 @app.route('/long_rest/<name>', methods=['POST'])
-def long_rest(name):
-    character = load_character(name)
+@character_handler
+def long_rest(name, character):
 
-    if not character:
-        return "Character not found", 404
     character['active_vitality_points'] = character['max_vitality_points']
     character['is_inspired'] = False
-    save_character(character)
+   
     reload_abilities_on_long_rest(character)
 
-    return redirect(url_for("view_character", name=name))
 
 @app.route('/is_inspired/<name>', methods=['POST'])
-def is_inspired(name):
-    character = load_character(name)
+@character_handler
+def is_inspired(name, character):
 
-    if not character:
-        return "Character not found", 404
     character['is_inspired'] = not character['is_inspired']
-    save_character(character)
-    return redirect(url_for("view_character", name=name))
+  
 @app.route('/decrease_dc/<name>/<ability_id>', methods=['POST'])
-def decrease_dc(name, ability_id):
+@character_handler
+def decrease_dc(name, character, ability_id):
     change = -1
-
-    modify_ability_dc(name, ability_id, change)
-    return redirect(url_for("view_character", name=name))
+    modify_ability_dc(name, ability_id, change, character)
+  
 
 
 @app.route('/increase_dc/<name>/<ability_id>', methods=['POST'])
-def increase_dc(name, ability_id):
+@character_handler
+def increase_dc(name, character, ability_id):
     change = 1
-    modify_ability_dc(name, ability_id, change)
-
-    return redirect(url_for("view_character", name=name))
+    modify_ability_dc(name, ability_id, change, character)
+    
+  
 
 @app.route('/increase_proficiency/<name>/<proficiency_id>', methods=['POST'])
-def increase_proficiency(name, proficiency_id):
+@character_handler
+def increase_proficiency(name, character, proficiency_id):
     change = 1
-    modify_proficiency_value(name, proficiency_id, change)
-    update_character(name)
-    return redirect(url_for("view_character", name=name))
+    modify_proficiency_value(proficiency_id, change, character)
+   
+
 
 @app.route('/decrease_proficiency/<name>/<proficiency_id>', methods=['POST'])
-def decrease_proficiency(name, proficiency_id):
+@character_handler
+def decrease_proficiency(name, character, proficiency_id):
     change = -1
-    modify_proficiency_value(name, proficiency_id, change)
-    update_character(name)
-    return redirect(url_for("view_character", name=name))
-def modify_proficiency_value(name, ability_id, change):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+    modify_proficiency_value(proficiency_id, change, character)
     
-    character['skills'][ability_id]['proficiency_bonus'] = int(character['skills'][ability_id]['proficiency_bonus']) + change
     
-    save_character(character)
-def modify_ability_dc(name, ability_id, change):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
 
+def modify_proficiency_value(ability_id, change, character):
+    character['skills'][ability_id]['proficiency_bonus'] = int(character['skills'][ability_id]['proficiency_bonus']) + change
+    save_character(character)
+
+
+def modify_ability_dc(name, ability_id, change, character):
     # Find the ability and update its DC
     for ability in character.get("active_abilities", []):
         if ability["id"] == ability_id:
@@ -1926,10 +1904,8 @@ def modify_ability_dc(name, ability_id, change):
 
 
 @app.route('/character/<name>/add_note', methods=['POST'])
-def add_note(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+@character_handler
+def add_note(name, character):
 
     # Get note content from form
     note_content = request.form.get('note_content')
@@ -1948,19 +1924,11 @@ def add_note(name):
     # Add to character's notes
     character["notes"][note_id] = note
 
-    # Save character
-    save_character(character)
-
-    # Redirect back to character sheet
-    return redirect(url_for("view_character", name=name))
 
 
 @app.route('/character/<name>/edit_note', methods=['POST'])
-def edit_note(name):
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
-
+@character_handler
+def edit_note(name, character):
     # Get note details from form
     note_id = request.form.get('note_id')
     note_content = request.form.get('note_content')
@@ -1972,33 +1940,23 @@ def edit_note(name):
         # Optionally update the timestamp to show it was edited
         character["notes"][note_id]['date'] = datetime.now().strftime('%Y-%m-%d %H:%M') + ' (edited)'
 
-        # Save character
-        save_character(character)
-
-    # Redirect back to character sheet
-    return redirect(url_for("view_character", name=name))
 
 
 @app.route('/character/<name>/delete_note/<note_id>', methods=['POST'])
-def delete_note(name, note_id):
+@character_handler
+def delete_note(name,character, note_id):
     # Get character
-    character = load_character(name)
-    if not character:
-        return "Character not found", 404
+ 
 
     if 'notes' in character and note_id in character['notes']:
         del character["notes"][note_id]
 
-        # Save character
-        save_character(character)
 
-    # Redirect back to character sheet
-    return redirect(url_for("view_character", name=name))
 
 @app.route('/character/<name>/inventory/move_to_container', methods=['POST'])
-def move_to_container(name):
-    character = load_character(name)
-    if character:
+@character_handler
+def move_to_container(name, character):
+  
         item_name = request.form['item_name']
         container_name = request.form['container_name']
         
@@ -2030,19 +1988,17 @@ def move_to_container(name):
                 contents_weight = sum(content['total_weight'] for content in container['contents'])
                 container['total_weight'] = container_own_weight + contents_weight
                 
-                save_character(character)
-                update_character(character['name'])
-                return redirect(url_for('view_character', name=name))
+            
             else:
                 flash('Not enough capacity in the container!', 'error')
-                return redirect(url_for('view_character', name=name))
     
-    return "Character not found", 404
+    
+    
 
 @app.route('/character/<name>/inventory/remove_from_container', methods=['POST'])
-def remove_from_container(name):
-    character = load_character(name)
-    if character:
+@character_handler
+def remove_from_container(name, character):
+   
         item_name = request.form['item_name']
         container_name = request.form['container_name']
         
@@ -2068,11 +2024,34 @@ def remove_from_container(name):
                 contents_weight = sum(content['total_weight'] for content in container['contents'])
                 container['total_weight'] = container_own_weight + contents_weight
                 
-                save_character(character)
-                update_character(character['name'])
-                return redirect(url_for('view_character', name=name))
-    
-    return "Character not found", 404
+
+# @app.route("/character/<name>/add_custom_skill_from_creation", methods=["POST"])
+# @load_character_wrapper
+# def add_custom_skill_from_creation(name, character):
+#     # Retrieve form data
+#     custom_skill_name = request.form.get("custom_skill_name")
+#     custom_skill_stat = request.form.get("custom_skill_stat")  # e.g., 'DX', 'IN', etc.
+
+#     if custom_skill_name and custom_skill_stat:
+#         stat_modifier = get_modifier(character[custom_skill_stat])  # Ensure correct stat modifier
+#         proficiency_bonus = 0  # Default, user can update later
+
+#         character["skills"][custom_skill_name] = {
+#             "stat": custom_skill_stat,
+#             "proficiency_bonus": proficiency_bonus,
+#             "buff": 0
+#         }
+
+#         save_character(character)
+#         update_character(name)  # Ensure updates reflect
+
+#     return render_template("create_character_part2.html", character=character)
+
+@app.route('/character/<name>/inventory/reset_home_storage', methods=['POST'])
+@character_handler
+def reset_home_storage(name, character):
+        # Clear all items from the global home storage
+        reset_home_items()
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

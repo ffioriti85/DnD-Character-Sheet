@@ -1,0 +1,428 @@
+/* Responsive Character Sheet Styles */
+:root {
+    --primary-color: #2c3e50;
+    --secondary-color: #34495e;
+    --accent-color: #FFD700;
+    --light-bg: #f8f9fa;
+    --dark-bg: #343a40;
+    --sidebar-width: 250px;
+    --sidebar-bg: #343a40;
+}
+
+/* Common styles for both desktop and mobile */
+body {
+    font-family: 'Cinzel', serif;
+    background-color: #f9f9f9;
+    color: #111;
+    min-height: 100vh;
+}
+
+.character-sheet {
+    min-height: 100vh;
+}
+
+/* Add dynamic health bar styles */
+.health-bar {
+    height: 8px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.vp-bar {
+    background-color: #28a745;  /* Solid green for VP */
+}
+
+.wp-bar {
+    background-color: #dc3545;  /* Solid red for WP */
+}
+
+/* Special inspired state */
+.inspired {
+    background-color: var(--accent-color);
+}
+
+.inspired .card-header,
+.inspired .section-header {
+    background-color: darkorange;
+}
+
+/* Desktop Styles */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: var(--sidebar-width);
+    background-color: var(--sidebar-bg);
+    z-index: 1000;
+    overflow-y: auto;
+    color: white;
+    transition: transform 0.3s ease-in-out;
+}
+
+.sidebar.collapsed {
+    transform: translateX(calc(-1 * var(--sidebar-width)));
+}
+
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    border-radius: 0;
+    padding: 10px 15px;
+    margin: 2px 0;
+    transition: all 0.3s;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background-color: var(--secondary-color);
+    color: white;
+    border-left: 4px solid var(--accent-color);
+}
+
+.sidebar .nav-link i {
+    margin-right: 8px;
+}
+
+/* Main Content Styles */
+.main-content {
+    position: relative;
+    margin-left: var(--sidebar-width);
+    padding: 20px;
+    min-height: 100vh;
+    width: calc(100% - var(--sidebar-width));
+    transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out;
+}
+
+.main-content.expanded {
+    margin-left: 0;
+    width: 100%;
+}
+
+/* Card Styles */
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: bold;
+    padding: 12px 15px;
+}
+
+/* Stat box styling */
+.stat-box {
+    background-color: white;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    height: 100%;
+    margin-bottom: 15px;
+}
+
+.stat-inner-box {
+    background-color: rgba(240, 240, 240, 0.6);
+    border-radius: 6px;
+    padding: 8px;
+    margin-top: 5px;
+}
+
+.modifier {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin: 3px 0;
+}
+
+.value {
+    font-size: 1rem;
+}
+
+.label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--primary-color);
+}
+
+/* Button styling */
+.btn-character {
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 0.85rem;
+    border: none;
+    margin: 2px;
+}
+
+.btn-character:hover {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+/* Currency styling */
+.coin {
+    padding: 4px 6px;
+    border-radius: 3px;
+    min-width: 60px;
+    text-align: center;
+    color: black;
+    font-weight: bold;
+    display: inline-block;
+    margin: 3px;
+}
+
+.gold { background-color: #D4AF37; }
+.silver { background-color: #C0C0C0; }
+.copper { background-color: #B87333; }
+
+/* Table styling */
+.table-character {
+    font-size: 0.9rem;
+}
+
+.table-character th {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Section styling */
+.section {
+    padding-top: 60px;
+    margin-top: -50px;
+}
+
+/* Mobile section styles */
+.section-header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 12px 15px;
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 15px;
+}
+
+.section-content {
+    background-color: white;
+    border-radius: 0 0 8px 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.content-section {
+    margin-bottom: 30px;
+}
+
+/* Character elements */
+.character-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-color: var(--light-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px auto;
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    border: 3px solid var(--primary-color);
+}
+
+/* Mobile specific styles */
+@media (max-width: 767.98px) {
+    /* Main layout */
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 10px;
+        padding-bottom: 60px; /* Space for fixed bottom action bar */
+    }
+    
+    /* Hide sidebar by default on mobile */
+    .sidebar {
+        transform: translateX(calc(-1 * var(--sidebar-width)));
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    
+    /* Hide hover effects on mobile */
+    .card:hover {
+        transform: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Collapsible sections for mobile */
+    .collapsible {
+        margin-bottom: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .collapsible-header {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .collapsible-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+        padding: 0 1rem;
+    }
+    
+    /* Mobile stat row */
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    /* Mobile stats grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+        padding: 0.5rem;
+    }
+
+    .stat-card {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    /* Mobile action buttons */
+    .action-buttons {
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    }
+    
+    /* More compact cards on mobile */
+    .card {
+        margin-bottom: 10px;
+        border-radius: 8px;
+    }
+
+    .card-body {
+        padding: 10px;
+    }
+
+    .card-header {
+        padding: 8px 10px;
+        font-size: 1rem;
+    }
+    
+    /* Compact stat boxes */
+    .stat-box {
+        padding: 8px;
+        margin-bottom: 8px;
+    }
+
+    .stat-inner-box {
+        padding: 5px;
+        margin-top: 3px;
+    }
+    
+    /* Adjusted text sizes for mobile */
+    .modifier {
+        font-size: 1rem;
+        margin: 2px 0;
+    }
+
+    .value {
+        font-size: 0.9rem;
+    }
+
+    .label {
+        font-size: 0.9rem;
+        margin-bottom: 3px;
+    }
+    
+    /* More compact buttons */
+    .btn-character {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+    }
+    
+    /* Optimize tables for mobile */
+    .table-character {
+        font-size: 0.8rem;
+    }
+
+    .table-character td, 
+    .table-character th {
+        padding: 4px 8px;
+    }
+    
+    /* Optimize currency display */
+    .coin {
+        padding: 2px 4px;
+        min-width: 50px;
+        font-size: 0.8rem;
+        margin: 2px;
+    }
+    
+    /* Optimize forms */
+    .form-control, .form-select {
+        padding: 4px 8px;
+        font-size: 0.9rem;
+        height: auto;
+    }
+    
+    /* Make character avatar smaller */
+    .character-avatar {
+        width: 60px;
+        height: 60px;
+        font-size: 1.8rem;
+        margin-bottom: 10px;
+    }
+    
+    /* Traits and abilities on mobile */
+    .trait-item, .ability-item {
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        margin-bottom: 0.25rem;
+        overflow: hidden;
+    }
+
+    .trait-header, .ability-header {
+        background-color: #f8f9fa;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+    }
+
+    .trait-name, .ability-name {
+        color: #495057;
+        font-size: 0.9rem;
+    }
+
+    .trait-description, .ability-description {
+        padding: 0.5rem;
+        background-color: #fff;
+        border-top: 1px solid #dee2e6;
+        font-size: 0.9rem;
+    }
+} 

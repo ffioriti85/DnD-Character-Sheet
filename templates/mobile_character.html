@@ -53,7 +53,7 @@
                             {{ character.encumbrance }}
                         {% endif %}
                     </span>
-                    <small class="text-muted">({{ character.total_inventory_weight|round(1) }}lbs)</small>
+                                            <small class="text-muted">({{ character.total_inventory_weight|round(1) }})</small>
                 </div>
             </div>
             
@@ -482,7 +482,7 @@
     <!-- Inventory Section -->
     <div class="collapsible">
         <div class="collapsible-header">
-            <span>Inventory ({{ "%.1f"|format(character.total_inventory_weight) }}lbs)</span>
+                            <span>Inventory ({{ "%.1f"|format(character.total_inventory_weight) }})</span>
             <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addItemModal">
                 <i class="fas fa-plus"></i> Add Item
             </button>
@@ -517,7 +517,7 @@
                             <tr>
                                 <th>Item</th>
                                 <th>Units</th>
-                                <th>Weight</th>
+                                <th>Wt</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -542,16 +542,12 @@
                                     <div class="unit-management-inline">
                                         <form action="{{ url_for('remove_unit', name=character.name) }}" method="POST" class="d-inline">
                                             <input type="hidden" name="item_name" value="{{ item.item_name }}">
-                                            <button type="submit" class="btn btn-outline-secondary btn-sm unit-btn unit-btn-remove" title="Remove 1 unit">
-                                                <i class="fas fa-minus"></i>
-                                            </button>
+                                            <button type="submit" class="unit-btn unit-btn-remove" title="Remove 1 unit">-</button>
                                         </form>
                                         <span class="unit-value">{{ item.units }}</span>
                                         <form action="{{ url_for('add_unit', name=character.name) }}" method="POST" class="d-inline">
                                             <input type="hidden" name="item_name" value="{{ item.item_name }}">
-                                            <button type="submit" class="btn btn-outline-secondary btn-sm unit-btn unit-btn-add" title="Add 1 unit">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
+                                            <button type="submit" class="unit-btn unit-btn-add" title="Add 1 unit">+</button>
                                         </form>
                                     </div>
                                     {% else %}
@@ -559,29 +555,36 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if item.is_container %}
-                                        {{ "%.1f"|format(item.total_weight) }}lbs
-                                        <small class="text-muted d-block">Container: {{ "%.1f"|format(item.weight_per_unit * item.units) }}lbs</small>
-                                        <small class="text-muted d-block">Contents: {{ "%.1f"|format(item.total_weight - (item.weight_per_unit * item.units)) }}lbs {% if item.weight_reduction and item.contents|length > 0 %}({{ item.weight_reduction }}% reduction applied){% endif %}</small>
-                                    {% else %}
-                                        {{ "%.1f"|format(item.total_weight) }}lbs
-                                    {% endif %}
+                                    {{ "%.1f"|format(item.total_weight) }}
                                 </td>
                                 <td>
-                                    <div class="inventory-actions">
-                                        {% if not item.is_container %}
-                                        <button class="btn btn-primary btn-sm" onclick="showMoveToContainerModal('{{ item.item_name }}')" title="Move to Container">
-                                            <i class="fas fa-box-open"></i>
+                                    <div class="dropdown">
+                                        <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Actions
                                         </button>
+                                        <ul class="dropdown-menu">
+                                            {% if not item.is_container %}
+                                            <li><a class="dropdown-item" href="#" onclick="showMoveToContainerModal('{{ item.item_name }}')">
+                                                <i class="fas fa-box-open me-2"></i>Move to Container
+                                            </a></li>
                                         {% endif %}
+                                            <li>
                                         <form action="{{ url_for('store_item', name=character.name) }}" method="POST" class="d-inline">
                                             <input type="hidden" name="item_name" value="{{ item.item_name }}">
-                                            <button type="submit" class="btn btn-danger btn-sm">Store</button>
+                                                    <button type="submit" class="btn btn-link dropdown-item p-0">
+                                                        <i class="fas fa-home me-2"></i>Store at Home
+                                                    </button>
                                         </form>
+                                            </li>
+                                            <li>
                                         <form action="{{ url_for('drop_item', name=character.name) }}" method="POST" class="d-inline">
                                             <input type="hidden" name="item_name" value="{{ item.item_name }}">
-                                            <button type="submit" class="btn btn-danger btn-sm">Drop</button>
+                                                    <button type="submit" class="btn btn-link dropdown-item p-0">
+                                                        <i class="fas fa-hand-paper me-2"></i>Drop to Ground
+                                                    </button>
                                         </form>
+                                            </li>
+                                        </ul>
                                     </div>
                                 </td>
                             </tr>
@@ -595,7 +598,7 @@
                                                 <tr>
                                                     <th>Item</th>
                                                     <th>Units</th>
-                                                    <th>Weight</th>
+                                                    <th>Wt</th>
                                                     <th>Actions</th>
                                                 </tr>
                                             </thead>
@@ -607,29 +610,32 @@
                                                         <div class="unit-management-inline">
                                                             <form action="{{ url_for('remove_unit', name=character.name) }}" method="POST" class="d-inline">
                                                                 <input type="hidden" name="item_name" value="{{ content_item.item_name }}">
-                                                                <button type="submit" class="btn btn-outline-secondary btn-sm unit-btn unit-btn-remove" title="Remove 1 unit">
-                                                                    <i class="fas fa-minus"></i>
-                                                                </button>
+                                                                                                            <button type="submit" class="unit-btn unit-btn-remove" title="Remove 1 unit">-</button>
                                                             </form>
                                                             <span class="unit-value">{{ content_item.units }}</span>
                                                             <form action="{{ url_for('add_unit', name=character.name) }}" method="POST" class="d-inline">
                                                                 <input type="hidden" name="item_name" value="{{ content_item.item_name }}">
-                                                                <button type="submit" class="btn btn-outline-secondary btn-sm unit-btn unit-btn-add" title="Add 1 unit">
-                                                                    <i class="fas fa-plus"></i>
-                                                                </button>
+                                                                                                            <button type="submit" class="unit-btn unit-btn-add" title="Add 1 unit">+</button>
                                                             </form>
                                                         </div>
                                                     </td>
-                                                    <td>{{ "%.1f"|format(content_item.total_weight) }}lbs</td>
+                                                    <td>{{ "%.1f"|format(content_item.total_weight) }}</td>
                                                     <td>
-                                                        <div class="inventory-actions">
-                                                            <form action="{{ url_for('remove_from_container', name=character.name) }}" method="POST" class="d-inline">
-                                                                <input type="hidden" name="item_name" value="{{ content_item.item_name }}">
-                                                                <input type="hidden" name="container_name" value="{{ item.item_name }}">
-                                                                <button type="submit" class="btn btn-warning btn-sm" title="Remove from Container">
-                                                                    <i class="fas fa-box-open"></i>
-                                                                </button>
-                                                            </form>
+                                                        <div class="dropdown">
+                                                            <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                                Actions
+                                                            </button>
+                                                            <ul class="dropdown-menu">
+                                                                <li>
+                                                        <form action="{{ url_for('remove_from_container', name=character.name) }}" method="POST" class="d-inline">
+                                                            <input type="hidden" name="item_name" value="{{ content_item.item_name }}">
+                                                            <input type="hidden" name="container_name" value="{{ item.item_name }}">
+                                                                        <button type="submit" class="btn btn-link dropdown-item p-0">
+                                                                            <i class="fas fa-box-open me-2"></i>Remove from Container
+                                                            </button>
+                                                        </form>
+                                                                </li>
+                                                            </ul>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -1878,6 +1884,46 @@ function toggleContainerFields() {
 
 .btn-group-sm .btn {
     padding: 0.25rem 0.5rem;
+}
+
+/* Dropdown styling for inventory actions */
+.inventory-section .dropdown-toggle {
+    min-width: 80px;
+}
+
+.inventory-section .dropdown-menu {
+    min-width: 180px;
+}
+
+.inventory-section .dropdown-item {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+}
+
+.inventory-section .dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.inventory-section .dropdown-item:active {
+    background-color: #e9ecef;
+}
+
+/* Ensure proper spacing in mobile tables */
+@media (max-width: 768px) {
+    .inventory-section .table th,
+    .inventory-section .table td {
+        padding: 0.25rem;
+        font-size: 0.875rem;
+    }
+    
+    .inventory-section .dropdown-toggle {
+        min-width: 70px;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
 }
 </style>
 {% endblock %} 

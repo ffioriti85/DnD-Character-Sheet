@@ -1,9 +1,6 @@
 from flask import Flask, request, render_template, redirect, url_for, jsonify, session, flash, send_file, make_response
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import Integer, String, Text, Float
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import json
@@ -1065,37 +1062,45 @@ def add_item_post(name, character):
         weapon_normal_range = request.form.get('normal_range') if (is_weapon and weapon_is_ranged) else None
         weapon_long_range = request.form.get('long_range') if (is_weapon and weapon_is_ranged) else None
 
-        # Create a dictionary for the item and add it to the character's inventory
-        item = {
-            'item_name': item_name,
-            'units': units,
-            'weight_per_unit': weight_per_unit,
-            'total_weight': total_weight,  # For containers, this will be updated with contents weight
-            'additional_info': additional_info,
-            'is_armor': is_armor,
-            'ac_value': ac_value,
-            'dx_modifier': dx_modifier,
-            'modifiers': modifiers,
-            'conditions': conditions,
-            'is_weapon': is_weapon,
-            'damage_dice': damage_dice,
-            'weapon_modifiers': weapon_modifiers,
-            'weapon_stat_modifier': weapon_stat_modifier,
-            'weapon_conditions': weapon_conditions,
-            'weapon_is_ranged': weapon_is_ranged,
-            'weapon_normal_range': weapon_normal_range,
-            'weapon_long_range': weapon_long_range,
-            'is_container': is_container,
-            'container_capacity': container_capacity,
-            'weight_reduction': weight_reduction,
-            'contents': [] if is_container else None
-        }
+        # Check if character already has this item (for stacking)
+        existing_item = next((i for i in character.get('inventory', []) if i['item_name'] == item_name), None)
         
-        # For containers, total_weight is container weight + contents weight
-        if is_container:
-            item['total_weight'] = total_weight  # Initially just the container's own weight
+        if existing_item and not existing_item.get('is_container') and not existing_item.get('is_armor') and not existing_item.get('is_weapon'):
+            # Stack the items by adding units
+            existing_item['units'] += units
+            existing_item['total_weight'] = existing_item['units'] * existing_item['weight_per_unit']
+        else:
+            # Create a dictionary for the item and add it to the character's inventory
+            item = {
+                'item_name': item_name,
+                'units': units,
+                'weight_per_unit': weight_per_unit,
+                'total_weight': total_weight,  # For containers, this will be updated with contents weight
+                'additional_info': additional_info,
+                'is_armor': is_armor,
+                'ac_value': ac_value,
+                'dx_modifier': dx_modifier,
+                'modifiers': modifiers,
+                'conditions': conditions,
+                'is_weapon': is_weapon,
+                'damage_dice': damage_dice,
+                'weapon_modifiers': weapon_modifiers,
+                'weapon_stat_modifier': weapon_stat_modifier,
+                'weapon_conditions': weapon_conditions,
+                'weapon_is_ranged': weapon_is_ranged,
+                'weapon_normal_range': weapon_normal_range,
+                'weapon_long_range': weapon_long_range,
+                'is_container': is_container,
+                'container_capacity': container_capacity,
+                'weight_reduction': weight_reduction,
+                'contents': [] if is_container else None
+            }
             
-        character['inventory'].append(item)
+            # For containers, total_weight is container weight + contents weight
+            if is_container:
+                item['total_weight'] = total_weight  # Initially just the container's own weight
+                
+            character['inventory'].append(item)
 
 # Route to display the current inventory of a specific character
 # @app.route('/character/<name>/inventory', methods=['GET'])
@@ -1143,18 +1148,32 @@ def pickup_item(name, character):
         # Check if item is in global ground storage
         item = pickup_item_from_ground(item_name)
         if item:
-            # Add the item to character inventory
-            if 'inventory' not in character:
-                character['inventory'] = []
-            character['inventory'].append(item)
+            # Check if character already has this item
+            existing_item = next((i for i in character.get('inventory', []) if i['item_name'] == item_name), None)
+            if existing_item and not existing_item.get('is_container') and not existing_item.get('is_armor') and not existing_item.get('is_weapon'):
+                # Stack the items by adding units
+                existing_item['units'] += item['units']
+                existing_item['total_weight'] = existing_item['units'] * existing_item['weight_per_unit']
+            else:
+                # Add the item to character inventory
+                if 'inventory' not in character:
+                    character['inventory'] = []
+                character['inventory'].append(item)
 
         # Check if item is in global home storage
         item = pickup_item_from_home(item_name)
         if item:
-            # Add the item to character inventory
-            if 'inventory' not in character:
-                character['inventory'] = []
-            character['inventory'].append(item)
+            # Check if character already has this item
+            existing_item = next((i for i in character.get('inventory', []) if i['item_name'] == item_name), None)
+            if existing_item and not existing_item.get('is_container') and not existing_item.get('is_armor') and not existing_item.get('is_weapon'):
+                # Stack the items by adding units
+                existing_item['units'] += item['units']
+                existing_item['total_weight'] = existing_item['units'] * existing_item['weight_per_unit']
+            else:
+                # Add the item to character inventory
+                if 'inventory' not in character:
+                    character['inventory'] = []
+                character['inventory'].append(item)
 
 
 @app.route('/character/<name>/inventory/reset_on_the_ground', methods=['POST'])
@@ -2052,6 +2071,38 @@ def remove_from_container(name, character):
 def reset_home_storage(name, character):
         # Clear all items from the global home storage
         reset_home_items()
+
+@app.route('/character/<name>/inventory/add_unit', methods=['POST'])
+@character_handler
+def add_unit(name, character):
+    """Add one unit to an existing item."""
+    item_name = request.form['item_name']
+    item = next((item for item in character.get('inventory', []) if item['item_name'] == item_name), None)
+    
+    if item and not item.get('is_container'):
+        item['units'] += 1
+        item['total_weight'] = item['units'] * item['weight_per_unit']
+        save_character(character)
+        update_character(name)
+
+
+@app.route('/character/<name>/inventory/remove_unit', methods=['POST'])
+@character_handler
+def remove_unit(name, character):
+    """Remove one unit from an existing item. If units reach 0, remove the item entirely."""
+    item_name = request.form['item_name']
+    item = next((item for item in character.get('inventory', []) if item['item_name'] == item_name), None)
+    
+    if item and not item.get('is_container'):
+        if item['units'] > 1:
+            item['units'] -= 1
+            item['total_weight'] = item['units'] * item['weight_per_unit']
+        else:
+            # Remove the item entirely if it's the last unit
+            character['inventory'] = [i for i in character.get('inventory', []) if i['item_name'] != item_name]
+        
+        save_character(character)
+        update_character(name)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

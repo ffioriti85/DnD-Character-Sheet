@@ -32,6 +32,33 @@
                 <span>{{ character.total_ac }}</span>
             </div>
             
+            <!-- Encumbrance Section -->
+            <div class="stat-row">
+                <span>Encumbrance</span>
+                <div class="d-flex align-items-center">
+                    <span class="me-2">
+                        {% if character.encumbrance == 0 %}
+                            <span class="text-success">Unencumbered</span>
+                        {% elif character.encumbrance == 1 %}
+                            <span class="text-primary">Lightly Encumbered</span>
+                        {% elif character.encumbrance == 2 %}
+                            <span class="text-warning">Moderately Encumbered</span>
+                        {% elif character.encumbrance == 3 %}
+                            <span class="text-warning">Heavily Encumbered</span>
+                        {% elif character.encumbrance == 4 %}
+                            <span class="text-danger">Extremely Encumbered</span>
+                        {% elif character.encumbrance == 5 %}
+                            <span class="text-danger">Overloaded</span>
+                        {% else %}
+                            {{ character.encumbrance }}
+                        {% endif %}
+                    </span>
+                    <small class="text-muted">({{ character.total_inventory_weight|round(1) }}lbs)</small>
+                </div>
+            </div>
+            
+
+            
             <!-- VP Section -->
             <div class="stat-row">
                 <span>Vitality Points</span>
@@ -119,6 +146,12 @@
             {% if character.injury_fatigue_debuffs != "None" %}
             <div class="alert alert-warning mt-2">
                 <small>{{ character.injury_fatigue_debuffs | safe }}</small>
+            </div>
+            {% endif %}
+            
+            {% if character.encumbrance_penalty_explained and character.encumbrance_penalty_explained != "" %}
+            <div class="alert alert-info mt-2">
+                <small>{{ character.encumbrance_penalty_explained }}</small>
             </div>
             {% endif %}
         </div>
@@ -504,7 +537,27 @@
                                     {{ item.item_name }}
                                     {% endif %}
                                 </td>
-                                <td>{{ item.units }}</td>
+                                <td>
+                                    {% if not item.is_container %}
+                                    <div class="unit-management-inline">
+                                        <form action="{{ url_for('remove_unit', name=character.name) }}" method="POST" class="d-inline">
+                                            <input type="hidden" name="item_name" value="{{ item.item_name }}">
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm unit-btn unit-btn-remove" title="Remove 1 unit">
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                        </form>
+                                        <span class="unit-value">{{ item.units }}</span>
+                                        <form action="{{ url_for('add_unit', name=character.name) }}" method="POST" class="d-inline">
+                                            <input type="hidden" name="item_name" value="{{ item.item_name }}">
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm unit-btn unit-btn-add" title="Add 1 unit">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% else %}
+                                    {{ item.units }}
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% if item.is_container %}
                                         {{ "%.1f"|format(item.total_weight) }}lbs
@@ -515,7 +568,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <div class="btn-group btn-group-sm">
+                                    <div class="inventory-actions">
                                         {% if not item.is_container %}
                                         <button class="btn btn-primary btn-sm" onclick="showMoveToContainerModal('{{ item.item_name }}')" title="Move to Container">
                                             <i class="fas fa-box-open"></i>
@@ -550,16 +603,34 @@
                                                 {% for content_item in item.contents %}
                                                 <tr>
                                                     <td>{{ content_item.item_name }}</td>
-                                                    <td>{{ content_item.units }}</td>
+                                                    <td>
+                                                        <div class="unit-management-inline">
+                                                            <form action="{{ url_for('remove_unit', name=character.name) }}" method="POST" class="d-inline">
+                                                                <input type="hidden" name="item_name" value="{{ content_item.item_name }}">
+                                                                <button type="submit" class="btn btn-outline-secondary btn-sm unit-btn unit-btn-remove" title="Remove 1 unit">
+                                                                    <i class="fas fa-minus"></i>
+                                                                </button>
+                                                            </form>
+                                                            <span class="unit-value">{{ content_item.units }}</span>
+                                                            <form action="{{ url_for('add_unit', name=character.name) }}" method="POST" class="d-inline">
+                                                                <input type="hidden" name="item_name" value="{{ content_item.item_name }}">
+                                                                <button type="submit" class="btn btn-outline-secondary btn-sm unit-btn unit-btn-add" title="Add 1 unit">
+                                                                    <i class="fas fa-plus"></i>
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </td>
                                                     <td>{{ "%.1f"|format(content_item.total_weight) }}lbs</td>
                                                     <td>
-                                                        <form action="{{ url_for('remove_from_container', name=character.name) }}" method="POST" class="d-inline">
-                                                            <input type="hidden" name="item_name" value="{{ content_item.item_name }}">
-                                                            <input type="hidden" name="container_name" value="{{ item.item_name }}">
-                                                            <button type="submit" class="btn btn-warning btn-sm" title="Remove from Container">
-                                                                <i class="fas fa-box-open"></i>
-                                                            </button>
-                                                        </form>
+                                                        <div class="inventory-actions">
+                                                            <form action="{{ url_for('remove_from_container', name=character.name) }}" method="POST" class="d-inline">
+                                                                <input type="hidden" name="item_name" value="{{ content_item.item_name }}">
+                                                                <input type="hidden" name="container_name" value="{{ item.item_name }}">
+                                                                <button type="submit" class="btn btn-warning btn-sm" title="Remove from Container">
+                                                                    <i class="fas fa-box-open"></i>
+                                                                </button>
+                                                            </form>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                                 {% endfor %}
@@ -712,6 +783,328 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Rules Section -->
+    <div class="collapsible">
+        <div class="collapsible-header">
+            <span>Rules</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="collapsible-content">
+            <!-- Injury Fatigue Rules -->
+            <div class="rules-section mb-4">
+                <h6 class="rules-header">Injury Fatigue</h6>
+                <p class="rules-description mb-2">
+                    <small class="text-muted">While under Injury Fatigue, WP becomes the value from which CN modifier is calculated</small>
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm rules-table">
+                        <thead>
+                            <tr>
+                                <th>Level</th>
+                                <th>Conditions</th>
+                                <th>Thresholds</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>-1 ST and DX, disadvantage on physical ability checks or contests, -5 ft movement, 10% chance of spell failure</td>
+                                <td>WP-1</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>-3 ST/DX, disadvantage on all ability checks or contests, -10 ft movement, 30% chance of spell failure</td>
+                                <td>3/4 × WP</td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>-5 ST/DX, disadvantage on all ability checks or contests, attacks, and saving throws, -15 ft movement, 50% chance of spell failure</td>
+                                <td>2/4 × WP</td>
+                            </tr>
+                            <tr>
+                                <td>4</td>
+                                <td>Level 4 effects plus Max VP reduced to zero, and player gains the incapacitated condition</td>
+                                <td>1/4 × WP</td>
+                            </tr>
+                            <tr>
+                                <td>5</td>
+                                <td>Level 5 effects, no movement, death saves</td>
+                                <td>1</td>
+                            </tr>
+                            <tr>
+                                <td>6</td>
+                                <td>Death</td>
+                                <td>0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Encumbrance Rules -->
+            <div class="rules-section">
+                <h6 class="rules-header">Encumbrance</h6>
+                <p class="rules-description mb-2">
+                    <small class="text-muted">
+                        {% set height = character.height|float %}
+                        {% if height < 2 %}
+                            Size: Tiny ({{ "%.1f"|format(height) }}ft) - No encumbrance rules
+                        {% elif height < 4 %}
+                            Size: Small ({{ "%.1f"|format(height) }}ft) - ST × 2/3, 1.5, 3, 5, 7, 10
+                        {% elif height < 8 %}
+                            Size: Medium ({{ "%.1f"|format(height) }}ft) - ST × 1, 2.5, 5, 7.5, 11, 15
+                        {% elif height < 16 %}
+                            Size: Large ({{ "%.1f"|format(height) }}ft) - ST × 1.5, 3, 6, 10, 14, 20
+                        {% elif height < 32 %}
+                            Size: Huge ({{ "%.1f"|format(height) }}ft) - ST × 2, 4, 8, 12, 18, 25
+                        {% else %}
+                            Size: Gargantuan ({{ "%.1f"|format(height) }}ft) - ST × 3, 5, 10, 15, 22, 30
+                        {% endif %}
+                        {% if character.powerful_build %}
+                            <br><span class="text-success">⚡ Powerful Build: Uses thresholds of next larger size</span>
+                        {% endif %}
+                        | Strength: {{ character.active_ST }}
+                    </small>
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm rules-table">
+                        <thead>
+                            <tr>
+                                <th>Level</th>
+                                <th>Threshold</th>
+                                <th>Movement</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="table-success">
+                                <td>Unencumbered</td>
+                                <td>
+                                    {% if character.height|float < 4 %}
+                                        {% if character.powerful_build %}
+                                            {{ character.active_ST }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 2/3) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 8 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 1.5) }} lbs
+                                        {% else %}
+                                            {{ character.active_ST }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 16 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 2) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 1.5) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 32 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 3) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 2) }} lbs
+                                        {% endif %}
+                                    {% else %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 4) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 3) }} lbs
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>+5 ft</td>
+                            </tr>
+                            <tr class="table-primary">
+                                <td>Lightly</td>
+                                <td>
+                                    {% if character.height|float < 4 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 2.5) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 1.5) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 8 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 3) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 2.5) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 16 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 4) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 3) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 32 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 5) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 4) }} lbs
+                                        {% endif %}
+                                    {% else %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 6) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 5) }} lbs
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>Normal</td>
+                            </tr>
+                            <tr class="table-warning">
+                                <td>Moderately</td>
+                                <td>
+                                    {% if character.height|float < 4 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 5) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 3) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 8 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 6) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 5) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 16 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 8) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 6) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 32 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 10) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 8) }} lbs
+                                        {% endif %}
+                                    {% else %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 12) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 10) }} lbs
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>-10 ft</td>
+                            </tr>
+                            <tr class="table-warning">
+                                <td>Heavily</td>
+                                <td>
+                                    {% if character.height|float < 4 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 7.5) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 5) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 8 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 10) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 7.5) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 16 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 12) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 10) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 32 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 15) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 12) }} lbs
+                                        {% endif %}
+                                    {% else %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 18) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 15) }} lbs
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>-15 ft</td>
+                            </tr>
+                            <tr class="table-danger">
+                                <td>Extreme</td>
+                                <td>
+                                    {% if character.height|float < 4 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 11) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 7) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 8 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 14) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 11) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 16 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 18) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 14) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 32 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 22) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 18) }} lbs
+                                        {% endif %}
+                                    {% else %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 26) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 22) }} lbs
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>-20 ft</td>
+                            </tr>
+                            <tr class="table-danger">
+                                <td>Max</td>
+                                <td>
+                                    {% if character.height|float < 4 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 15) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 10) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 8 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 20) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 15) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 16 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 25) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 20) }} lbs
+                                        {% endif %}
+                                    {% elif character.height|float < 32 %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 30) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 25) }} lbs
+                                        {% endif %}
+                                    {% else %}
+                                        {% if character.powerful_build %}
+                                            {{ "%.1f"|format(character.active_ST * 35) }} lbs
+                                        {% else %}
+                                            {{ "%.1f"|format(character.active_ST * 30) }} lbs
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>Can't Move</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 

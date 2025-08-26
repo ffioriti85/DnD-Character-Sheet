@@ -182,4 +182,259 @@ tr:nth-child(even) {
     cursor: pointer;
     padding: 5px;
 }
+
+/* Unit Management Buttons - Inline Layout */
+.unit-management-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    justify-content: center;
+}
+
+.unit-management-inline .unit-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 0.25rem;
+    min-width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Green button for adding units */
+.unit-management-inline .unit-btn-add {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+    color: white !important;
+}
+
+.unit-management-inline .unit-btn-add:hover {
+    background-color: #218838 !important;
+    border-color: #1e7e34 !important;
+    color: white !important;
+}
+
+/* Red button for removing units */
+.unit-management-inline .unit-btn-remove {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: white !important;
+}
+
+.unit-management-inline .unit-btn-remove:hover {
+    background-color: #c82333 !important;
+    border-color: #bd2130 !important;
+    color: white !important;
+}
+
+.unit-management-inline .unit-value {
+    font-weight: bold;
+    min-width: 2rem;
+    text-align: center;
+    padding: 0 0.5rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    margin: 0 0.25rem;
+}
+
+/* Legacy unit management group (keeping for backward compatibility) */
+.unit-management-group {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 0.5rem;
+}
+
+.unit-management-group .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 0.25rem;
+    min-width: 28px;
+}
+
+.unit-management-group .btn:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.unit-management-group .btn:last-child {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.unit-management-group .btn:not(:first-child):not(:last-child) {
+    border-radius: 0;
+}
+
+/* Inventory table improvements */
+.inventory-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.inventory-actions .btn-group {
+    margin-right: 0.5rem;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+    .unit-management-group {
+        margin-bottom: 0.25rem;
+    }
+    
+    .inventory-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .inventory-actions .btn-group {
+        margin-right: 0;
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Mobile-specific unit management improvements */
+    .unit-management-inline {
+        gap: 0.125rem;
+    }
+    
+    .unit-management-inline .unit-btn {
+        min-width: 24px;
+        height: 24px;
+        font-size: 0.7rem;
+        padding: 0.125rem 0.25rem;
+    }
+    
+    .unit-management-inline .unit-value {
+        min-width: 1.5rem;
+        padding: 0 0.25rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Ensure colors work on mobile */
+    .unit-management-inline .unit-btn-add {
+        background-color: #28a745 !important;
+        border-color: #28a745 !important;
+        color: white !important;
+    }
+    
+    .unit-management-inline .unit-btn-remove {
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
+        color: white !important;
+    }
+}
+
+/* Text Color Utilities for Encumbrance Levels */
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-primary {
+    color: #007bff !important;
+}
+
+.text-warning {
+    color: #ffc107 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+/* Encumbrance Info Styling */
+.encumbrance-info {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+    border-left: 3px solid #6c757d;
+}
+
+.encumbrance-info small {
+    font-style: italic;
+    line-height: 1.2;
+}
+
+/* Rules Section Styling */
+.rules-section {
+    margin-bottom: 1.5rem;
+}
+
+.rules-header {
+    font-weight: bold;
+    color: #495057;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.rules-description {
+    font-style: italic;
+    color: #6c757d;
+}
+
+.rules-table {
+    font-size: 0.875rem;
+    margin-bottom: 0;
+}
+
+.rules-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    text-align: center;
+    vertical-align: middle;
+    padding: 0.5rem 0.25rem;
+    border: 1px solid #dee2e6;
+}
+
+.rules-table td {
+    padding: 0.5rem 0.25rem;
+    border: 1px solid #dee2e6;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.rules-table td:nth-child(2) {
+    text-align: left;
+}
+
+/* Table row colors for encumbrance levels */
+.rules-table .table-success {
+    background-color: #d4edda !important;
+}
+
+.rules-table .table-primary {
+    background-color: #d1ecf1 !important;
+}
+
+.rules-table .table-warning {
+    background-color: #fff3cd !important;
+}
+
+.rules-table .table-danger {
+    background-color: #f8d7da !important;
+}
+
+/* Mobile optimizations for rules tables */
+@media (max-width: 768px) {
+    .rules-table {
+        font-size: 0.8rem;
+    }
+    
+    .rules-table th,
+    .rules-table td {
+        padding: 0.375rem 0.125rem;
+    }
+    
+    .rules-table td:nth-child(2) {
+        font-size: 0.75rem;
+        line-height: 1.2;
+    }
 }

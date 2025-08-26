@@ -1280,7 +1280,27 @@
                     </tr>
                     {% for item in character.inventory %}
                     <tr class="{% if item.is_container %}container-row{% endif %}">
-                        <td>{{ item.units }}</td>
+                        <td>
+                            {% if not item.is_container %}
+                                                            <div class="unit-management-inline">
+                                    <form action="{{ url_for('remove_unit', name=character.name) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="item_name" value="{{ item.item_name }}">
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm unit-btn unit-btn-remove" title="Remove 1 unit">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                    </form>
+                                    <span class="unit-value">{{ item.units }}</span>
+                                    <form action="{{ url_for('add_unit', name=character.name) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="item_name" value="{{ item.item_name }}">
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm unit-btn unit-btn-add" title="Add 1 unit">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            {% else %}
+                            {{ item.units }}
+                            {% endif %}
+                        </td>
                         <td>
                             {% if item.is_container %}
                             <div class="d-flex align-items-center">
@@ -1297,7 +1317,7 @@
                         <td>{{ item.weight_per_unit }}</td>
                         <td>{{ item.total_weight }}</td>
                         <td>
-                            <div class="btn-group btn-group-sm">
+                            <div class="inventory-actions">
                                 {% if not item.is_container %}
                                 <button class="btn btn-primary btn-sm" onclick="showMoveToContainerModal('{{ item.item_name }}')" title="Move to Container">
                                     <i class="fas fa-box-open"></i>
@@ -1332,18 +1352,36 @@
                                     <tbody>
                                         {% for content_item in item.contents %}
                                         <tr>
-                                            <td>{{ content_item.units }}</td>
+                                            <td>
+                                                <div class="unit-management-inline">
+                                                    <form action="{{ url_for('remove_unit', name=character.name) }}" method="POST" class="d-inline">
+                                                        <input type="hidden" name="item_name" value="{{ content_item.item_name }}">
+                                                        <button type="submit" class="btn btn-outline-secondary btn-sm unit-btn unit-btn-remove" title="Remove 1 unit">
+                                                            <i class="fas fa-minus"></i>
+                                                        </button>
+                                                    </form>
+                                                    <span class="unit-value">{{ content_item.units }}</span>
+                                                    <form action="{{ url_for('add_unit', name=character.name) }}" method="POST" class="d-inline">
+                                                        <input type="hidden" name="item_name" value="{{ content_item.item_name }}">
+                                                        <button type="submit" class="btn btn-outline-secondary btn-sm unit-btn unit-btn-add" title="Add 1 unit">
+                                                            <i class="fas fa-plus"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
                                             <td>{{ content_item.item_name }}</td>
                                             <td>{{ content_item.weight_per_unit }}</td>
                                             <td>{{ content_item.total_weight }}</td>
                                             <td>
-                                                <form action="{{ url_for('remove_from_container', name=character.name) }}" method="POST" class="d-inline">
-                                                    <input type="hidden" name="item_name" value="{{ content_item.item_name }}">
-                                                    <input type="hidden" name="container_name" value="{{ item.item_name }}">
-                                                    <button type="submit" class="btn btn-warning btn-sm" title="Remove from Container">
-                                                        <i class="fas fa-box-open"></i>
-                                                    </button>
-                                                </form>
+                                                <div class="inventory-actions">
+                                                    <form action="{{ url_for('remove_from_container', name=character.name) }}" method="POST" class="d-inline">
+                                                        <input type="hidden" name="item_name" value="{{ content_item.item_name }}">
+                                                        <input type="hidden" name="container_name" value="{{ item.item_name }}">
+                                                        <button type="submit" class="btn btn-warning btn-sm" title="Remove from Container">
+                                                            <i class="fas fa-box-open"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                         {% endfor %}
